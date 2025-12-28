@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Plus, Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Info, Settings, UserPlus, ChevronDown, Upload, FileDown, AlertCircle, CheckCircle2, ArrowLeft, Smartphone, User as UserIcon, CreditCard, Users as UsersIcon, Heart } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Info, Settings, UserPlus, ChevronDown, Upload, FileDown, AlertCircle, CheckCircle2, ArrowLeft, Smartphone, User as UserIcon, CreditCard, Users as UsersIcon, Heart, Languages, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface StudentManagerProps {
@@ -177,6 +177,40 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     XLSX.writeFile(wb, "School_Admission_Template.xlsx");
   };
 
+  const handleExportData = () => {
+    if (filteredStudents.length === 0) {
+      showToast("No data to export", "info");
+      return;
+    }
+
+    const exportData = filteredStudents.map(s => {
+      const row: any = {
+        'Roll No': s.rollNo,
+        'Full Name': s.name,
+        'Class': s.className,
+        'Medium': s.medium || 'English',
+        'Date of Birth': s.dob,
+        'Place of Birth': s.placeOfBirth || '',
+        'Phone': s.phone,
+        'Alternate Phone': s.alternatePhone || '',
+        'Address': s.address
+      };
+      
+      // Add custom fields
+      customFieldDefs.forEach(def => {
+        row[def.label] = s.customFields?.[def.id] || '';
+      });
+      
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Students");
+    XLSX.writeFile(wb, `StudentList_${filterSpecificClass || 'All'}.xlsx`);
+    showToast("Export Successful", "success");
+  };
+
   const handleBulkImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -260,6 +294,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1">
+            <button onClick={handleExportData} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm"><Download size={16} /> Export</button>
             <button onClick={downloadTemplate} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm"><FileDown size={16} /> Template</button>
             <button onClick={() => fileInputRef.current?.click()} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-100 border border-indigo-400 text-indigo-900 rounded-xl hover:bg-indigo-200 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all shadow-sm"><Upload size={16} /> Import<input type="file" ref={fileInputRef} onChange={handleBulkImport} accept=".xlsx,.xls,.csv" className="hidden" /></button>
             <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 bg-slate-200 text-slate-800 rounded-xl hover:bg-slate-300 transition-all border border-slate-400 shadow-sm"><Settings size={20} /></button>
@@ -310,193 +345,128 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         )}
       </div>
 
-      {/* ADMISSION MODAL - FULLSCREEN FIX & MAXIMUM VISIBILITY */}
+      {/* ADMISSION MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[400] flex items-center justify-center p-0 sm:p-4 overflow-hidden">
-            <div className="bg-white w-full h-full sm:max-h-[96vh] sm:max-w-6xl sm:rounded-[1.5rem] shadow-[0_0_100px_rgba(0,0,0,0.6)] flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden border-2 border-slate-700">
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-xl max-h-[90vh] rounded-[2rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
                 
-                {/* Fixed Header - High Contrast Dark Mode Style */}
-                <div className="px-6 h-20 shrink-0 flex items-center justify-between border-b-2 border-slate-700 bg-slate-900 text-white">
-                    <div className="flex items-center gap-4">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="p-2.5 text-white hover:bg-slate-800 rounded-xl transition-all border border-slate-600 bg-slate-800 shadow-md">
-                            <ArrowLeft size={24} />
-                        </button>
-                        <div>
-                            <h3 className="text-2xl font-black uppercase tracking-tight text-white">{formData.id ? 'Edit Profile' : 'New Admission'}</h3>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] font-black text-indigo-300 bg-indigo-900/50 px-3 py-0.5 rounded-full uppercase tracking-widest border border-indigo-500/50">Official Portal</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <div className="hidden sm:block text-right">
-                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</div>
-                             <div className="text-sm font-black text-indigo-400">2025 - 2026</div>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg border border-white/20">
-                            <GraduationCap size={28} />
-                        </div>
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="sm:hidden p-2.5 text-slate-400 hover:text-white bg-slate-800 rounded-xl border border-slate-600">
-                            <X size={24} />
-                        </button>
-                    </div>
+                {/* Header */}
+                <div className="px-8 pt-8 pb-4 shrink-0">
+                    <h3 className="text-2xl font-black text-[#1e1b4b] tracking-tight">{formData.id ? 'Edit Student' : 'Add New Student'}</h3>
                 </div>
 
-                {/* Form Content - Scrolled */}
+                {/* Form Body - Scrollable */}
                 <form onSubmit={handleAddStudent} className="flex flex-col flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto px-6 py-10 no-scrollbar bg-slate-50">
-                        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 pb-12">
-                            
-                            {/* Column 1: Core Identification */}
-                            <div className="lg:col-span-7 space-y-12">
-                                
-                                <section className="space-y-8">
-                                    <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-3">
-                                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-md"><UserIcon size={22}/></div>
-                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.3em]">1. Identity Profile</h4>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                        <div className="sm:col-span-2">
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Full Legal Name</label>
-                                            <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} 
-                                                className="w-full px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 placeholder-slate-400 outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm" 
-                                                placeholder="Enter student name" required />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Roll Number</label>
-                                            <input type="text" value={formData.rollNo} onChange={(e) => handleInputChange('rollNo', e.target.value)} 
-                                                className="w-full px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 placeholder-slate-400 outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm" 
-                                                placeholder="ID #" required />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Medium</label>
-                                            <div className="flex bg-slate-300 p-1.5 rounded-2xl border-2 border-slate-400 h-[64px]">
-                                                <button type="button" onClick={() => handleInputChange('medium', 'English')} 
-                                                    className={`flex-1 text-xs font-black uppercase rounded-xl transition-all ${formData.medium === 'English' ? 'bg-indigo-700 text-white shadow-lg' : 'text-slate-700 hover:text-slate-900'}`}>
-                                                    English
-                                                </button>
-                                                <button type="button" onClick={() => handleInputChange('medium', 'Semi')} 
-                                                    className={`flex-1 text-xs font-black uppercase rounded-xl transition-all ${formData.medium === 'Semi' ? 'bg-orange-700 text-white shadow-lg' : 'text-slate-700 hover:text-slate-900'}`}>
-                                                    Semi
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div className="sm:col-span-2">
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Grade / Class Allocation</label>
-                                            <div className="relative">
-                                                <select value={formData.className} onChange={(e) => handleInputChange('className', e.target.value)} 
-                                                    className="w-full appearance-none px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm">
-                                                    {CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                                                </select>
-                                                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" size={28} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <section className="space-y-8">
-                                    <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-3">
-                                        <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-md"><Phone size={22}/></div>
-                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.3em]">2. Communication</h4>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                        <div className="relative">
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Primary Mobile</label>
-                                            <Smartphone className="absolute left-5 bottom-5 text-slate-400 pointer-events-none" size={24} />
-                                            <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))} 
-                                                placeholder="10 Digit Number" maxLength={10}
-                                                className="w-full pl-14 pr-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm" required />
-                                        </div>
-                                        <div className="relative">
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Alt / Emergency</label>
-                                            <Phone className="absolute left-5 bottom-5 text-slate-400 pointer-events-none" size={24} />
-                                            <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} 
-                                                placeholder="Optional Number" maxLength={10}
-                                                className="w-full pl-14 pr-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 outline-none focus:ring-8 focus:ring-indigo-600/5 focus:border-indigo-600 transition-all shadow-sm" />
-                                        </div>
-                                    </div>
-                                </section>
+                    <div className="flex-1 overflow-y-auto px-8 py-4 no-scrollbar space-y-5">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                            {/* Full Name */}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Full Name</label>
+                                <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                    placeholder="e.g. John Doe" required />
                             </div>
 
-                            {/* Column 2: Personal & Custom */}
-                            <div className="lg:col-span-5 space-y-12">
-                                
-                                <section className="space-y-8">
-                                    <div className="flex items-center gap-3 border-b-2 border-slate-200 pb-3">
-                                        <div className="w-10 h-10 rounded-xl bg-orange-700 text-white flex items-center justify-center shadow-md"><MapPin size={22}/></div>
-                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.3em]">3. Personal Bio</h4>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-8">
-                                        <div>
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Date of Birth</label>
-                                            <input type="date" value={formData.dob} onChange={(e) => handleInputChange('dob', e.target.value)} 
-                                                className="w-full px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-base font-bold text-slate-900 outline-none focus:border-indigo-600 transition-all shadow-sm" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Place of Birth</label>
-                                            <input type="text" value={formData.placeOfBirth} onChange={(e) => handleInputChange('placeOfBirth', e.target.value)} 
-                                                placeholder="City"
-                                                className="w-full px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-base font-bold text-slate-900 outline-none focus:border-indigo-600 transition-all shadow-sm" />
-                                        </div>
-                                        <div className="col-span-2">
-                                            <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">Permanent Address</label>
-                                            <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} 
-                                                className="w-full px-6 py-5 bg-white border-2 border-slate-400 rounded-2xl text-base font-bold text-slate-900 outline-none min-h-[160px] focus:border-indigo-600 transition-all shadow-sm leading-relaxed" 
-                                                placeholder="Full street address, city, and pin code..." />
-                                        </div>
-                                    </div>
-                                </section>
+                            {/* Roll Number */}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Roll Number</label>
+                                <input type="text" value={formData.rollNo} onChange={(e) => handleInputChange('rollNo', e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                    placeholder="e.g. 101" required />
+                            </div>
 
-                                <section className="space-y-8">
-                                    <div className="flex items-center justify-between border-b-2 border-slate-200 pb-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-purple-700 text-white flex items-center justify-center shadow-md"><Plus size={22}/></div>
-                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-[0.3em]">4. Extended Info</h4>
-                                        </div>
-                                        <button type="button" onClick={() => setIsSettingsOpen(true)} className="p-3 text-indigo-900 bg-slate-200 border-2 border-slate-400 rounded-xl hover:bg-slate-300 transition-all shadow-sm"><Settings size={22}/></button>
-                                    </div>
+                            {/* Date of Birth */}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Date of Birth</label>
+                                <input type="date" value={formData.dob} onChange={(e) => handleInputChange('dob', e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" />
+                            </div>
 
-                                    <div className="bg-slate-200 p-8 rounded-[2rem] border-2 border-slate-400 space-y-8 shadow-inner">
-                                        <div className="flex flex-wrap gap-3">
-                                            <button type="button" onClick={() => handleQuickAddField("Father's Name")} className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:shadow-xl hover:border-indigo-600 transition-all active:scale-95 shadow-md"><UsersIcon size={16}/> + Father</button>
-                                            <button type="button" onClick={() => handleQuickAddField("Mother's Name")} className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:shadow-xl hover:border-indigo-600 transition-all active:scale-95 shadow-md"><Heart size={16}/> + Mother</button>
-                                            <button type="button" onClick={() => handleQuickAddField("Bank Account")} className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:shadow-xl hover:border-indigo-600 transition-all active:scale-95 shadow-md"><CreditCard size={16}/> + Bank</button>
-                                            <button type="button" onClick={() => handleQuickAddField("Aadhar Card")} className="flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-slate-500 text-slate-950 rounded-xl text-xs font-black uppercase hover:shadow-xl hover:border-indigo-600 transition-all active:scale-95 shadow-md"><Info size={16}/> + Aadhar</button>
-                                        </div>
+                            {/* Place of Birth */}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Place of Birth</label>
+                                <input type="text" value={formData.placeOfBirth} onChange={(e) => handleInputChange('placeOfBirth', e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                    placeholder="e.g. Mumbai" />
+                            </div>
 
-                                        {customFieldDefs.length > 0 ? (
-                                            <div className="grid grid-cols-1 gap-8">
-                                                {customFieldDefs.map(def => (
-                                                    <div key={def.id}>
-                                                        <label className="block text-xs font-black text-slate-900 uppercase mb-2 ml-1 tracking-wider">{def.label}</label>
-                                                        <input type="text" value={formData.customFields?.[def.id] || ''} onChange={(e) => handleCustomFieldChange(def.id, e.target.value)} 
-                                                            className="w-full px-5 py-4 bg-white border-2 border-slate-400 rounded-2xl text-lg font-bold text-slate-900 outline-none focus:border-indigo-700 transition-all shadow-md" 
-                                                            placeholder={`Enter ${def.label}...`} />
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-10 px-6 border-2 border-dashed border-slate-500 rounded-3xl bg-slate-100/50">
-                                                <p className="text-[11px] text-slate-600 font-black uppercase tracking-widest leading-relaxed">No custom fields active. Use quick-add above to capture Parent Details or Banking Information.</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
+                            {/* Grade / Class Selection */}
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Assigned Class</label>
+                                <div className="relative">
+                                    <select value={formData.className} onChange={(e) => handleInputChange('className', e.target.value)} 
+                                        className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-indigo-400 transition-all">
+                                        {CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                </div>
+                            </div>
+
+                            {/* Medium Toggle Section */}
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Medium</label>
+                                <div className="flex gap-4">
+                                    <button type="button" onClick={() => handleInputChange('medium', 'English')} 
+                                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-bold transition-all ${formData.medium === 'English' ? 'bg-[#eef2ff] border-indigo-200 text-[#4338ca]' : 'bg-white border-slate-200 text-slate-900'}`}>
+                                        <Languages size={18} /> English Med.
+                                    </button>
+                                    <button type="button" onClick={() => handleInputChange('medium', 'Semi')} 
+                                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-bold transition-all ${formData.medium === 'Semi' ? 'bg-[#eef2ff] border-indigo-200 text-[#4338ca]' : 'bg-white border-slate-200 text-slate-900'}`}>
+                                        <Languages size={18} /> Semi English
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Phone Numbers */}
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Phone No</label>
+                                <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                    placeholder="e.g. 9876543210" maxLength={10} required />
+                            </div>
+                            <div className="col-span-1">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Alternate Phone</label>
+                                <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                    placeholder="Optional" maxLength={10} />
+                            </div>
+
+                            {/* Address */}
+                            <div className="col-span-2">
+                                <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">Address</label>
+                                <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} 
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none min-h-[100px] focus:border-indigo-400 transition-all resize-none" 
+                                    placeholder="e.g. 123 Main St, City" />
                             </div>
                         </div>
+
+                        {/* Custom Fields Section */}
+                        {customFieldDefs.length > 0 && (
+                            <div className="pt-4 border-t border-slate-100 space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Extended Information</h4>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                    {customFieldDefs.map(def => (
+                                        <div key={def.id} className="col-span-1">
+                                            <label className="block text-xs font-bold text-slate-800 mb-2 ml-0.5">{def.label}</label>
+                                            <input type="text" value={formData.customFields?.[def.id] || ''} onChange={(e) => handleCustomFieldChange(def.id, e.target.value)} 
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-indigo-400 transition-all" 
+                                                placeholder={`Enter ${def.label}`} />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Final Fixed Footer - High Visibility Action Bar */}
-                    <div className="px-8 py-8 border-t-2 border-slate-700 shrink-0 flex items-center justify-end gap-6 bg-slate-900 shadow-[0_-20px_40px_rgba(0,0,0,0.3)]">
+                    {/* Footer Actions */}
+                    <div className="px-8 py-6 shrink-0 flex items-center justify-end gap-6 bg-white">
                         <button type="button" onClick={() => setIsModalOpen(false)} 
-                            className="px-10 py-5 text-white hover:text-slate-100 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-white/5 border-2 border-slate-600 transition-all">
-                            Discard All
+                            className="text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+                            Cancel
                         </button>
                         <button type="submit" 
-                            className="px-20 py-5 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:bg-indigo-500 hover:scale-[1.02] active:scale-95 transition-all border-2 border-indigo-400">
-                            {formData.id ? 'Save Profile Changes' : 'Confirm Enrollment'}
+                            className="px-10 py-2.5 bg-[#a5b4fc] text-white rounded-xl text-sm font-bold shadow-md hover:bg-[#818cf8] transition-all">
+                            Save
                         </button>
                     </div>
                 </form>
@@ -504,41 +474,73 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         </div>
       )}
 
-      {/* Field Settings Modal */}
+      {/* NEW MANAGE CUSTOM FIELDS MODAL - DESIGNED FROM SCREENSHOT */}
       {isSettingsOpen && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[500] p-4">
-              <div className="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200 border-2 border-slate-700">
-                  <div className="flex justify-between items-center mb-8">
-                      <div>
-                          <h3 className="text-2xl font-black text-slate-950">Field Schema</h3>
-                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Configure admission form</p>
+          <div className="fixed inset-0 bg-slate-950/20 backdrop-blur-sm flex items-center justify-center z-[500] p-4">
+              <div className="bg-white rounded-[1.5rem] shadow-2xl max-w-md w-full flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+                  <div className="p-8">
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-6">
+                          <h3 className="text-[1.3rem] font-bold text-[#1e293b] leading-tight">Manage Custom Fields</h3>
+                          <button onClick={() => setIsSettingsOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors -mt-1 -mr-1">
+                              <X size={24} strokeWidth={1.5} />
+                          </button>
                       </div>
-                      <button onClick={() => setIsSettingsOpen(false)} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-900 border-2 border-slate-300 transition-all"><X size={24}/></button>
-                  </div>
-                  <div className="space-y-8">
-                      <div className="bg-slate-100 p-6 rounded-2xl border-2 border-slate-300">
-                          <label className="block text-[11px] font-black text-slate-700 uppercase mb-3 ml-1 tracking-widest">Add New Column</label>
-                          <div className="flex gap-2">
-                              <input type="text" value={newFieldName} onChange={(e) => setNewFieldName(e.target.value)} placeholder="e.g. Passport ID" className="flex-1 px-4 py-3 bg-white border-2 border-slate-400 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-700 outline-none text-slate-950 shadow-sm" />
-                              <button onClick={handleAddFieldDef} className="bg-indigo-700 text-white p-3 rounded-xl hover:bg-indigo-800 transition-all shadow-md border border-white/20"><Plus size={24}/></button>
-                          </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-[#64748b] leading-relaxed mb-8">
+                          Add custom fields like "Mother's Name" or "Bank Details" to your student profiles.
+                      </p>
+
+                      {/* Input Section */}
+                      <div className="flex gap-3 mb-8">
+                          <input 
+                              type="text" 
+                              value={newFieldName} 
+                              onChange={(e) => setNewFieldName(e.target.value)} 
+                              placeholder="Field Name (e.g. Mother's Name)" 
+                              className="flex-1 px-5 py-3.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-300 transition-all"
+                              onKeyDown={(e) => e.key === 'Enter' && handleAddFieldDef()}
+                          />
+                          <button 
+                              onClick={handleAddFieldDef} 
+                              className="bg-[#a5b4fc] text-white px-7 py-3.5 rounded-xl text-sm font-bold shadow-sm hover:bg-[#818cf8] transition-all active:scale-95"
+                          >
+                              Add
+                          </button>
                       </div>
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
+
+                      {/* Fields List */}
+                      <div className="space-y-3 mb-8 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
                           {customFieldDefs.length === 0 ? (
-                              <div className="text-center py-10 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-400">
-                                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No custom fields defined</p>
+                              <div className="text-center py-6">
+                                  <p className="text-sm italic text-[#94a3b8]">No custom fields added yet.</p>
                               </div>
                           ) : (
                               customFieldDefs.map(def => (
-                                  <div key={def.id} className="flex items-center justify-between p-4 bg-white border-2 border-slate-300 rounded-2xl shadow-sm hover:border-indigo-400 transition-all group">
-                                      <span className="text-sm font-black text-slate-900">{def.label}</span>
-                                      <button onClick={() => removeFieldDef(def.id)} className="text-slate-400 hover:text-rose-700 transition-colors p-2 hover:bg-rose-50 rounded-xl"><Trash2 size={22}/></button>
+                                  <div key={def.id} className="flex items-center justify-between px-5 py-4 bg-white border border-slate-100 rounded-xl shadow-sm group hover:border-indigo-200 transition-all">
+                                      <span className="text-sm font-bold text-[#1e293b]">{def.label}</span>
+                                      <button 
+                                          onClick={() => removeFieldDef(def.id)} 
+                                          className="text-slate-300 hover:text-rose-500 transition-colors p-1"
+                                      >
+                                          <Trash2 size={18} strokeWidth={1.5} />
+                                      </button>
                                   </div>
                               ))
                           )}
                       </div>
+
+                      {/* Footer */}
+                      <div className="flex justify-end">
+                          <button 
+                              onClick={() => setIsSettingsOpen(false)} 
+                              className="px-8 py-2.5 bg-[#f1f5f9] text-[#1e293b] rounded-xl text-sm font-bold hover:bg-[#e2e8f0] transition-all"
+                          >
+                              Done
+                          </button>
+                      </div>
                   </div>
-                  <button onClick={() => setIsSettingsOpen(false)} className="w-full mt-10 py-5 bg-slate-950 text-white rounded-2xl text-xs font-black uppercase tracking-[0.25em] hover:bg-black transition-all shadow-xl border border-white/10">Update Admission System</button>
               </div>
           </div>
       )}

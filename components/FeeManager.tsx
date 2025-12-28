@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Student, FeeRecord, SPECIFIC_CLASSES } from '../types';
-import { IndianRupee, History, Plus, Search, Calendar, FileText, Lock, X, ChevronRight } from 'lucide-react';
+import { IndianRupee, History, Plus, Search, Calendar, Lock, X, ChevronRight } from 'lucide-react';
 
 interface FeeManagerProps {
   students: Student[];
@@ -90,7 +91,7 @@ const FeeManager: React.FC<FeeManagerProps> = ({ students, fees, setFees, readOn
            <p className="text-sm text-slate-500">Track student fee payments</p>
          </div>
          
-         <div className="flex gap-2 w-full sm:w-auto">
+         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
            <div className="relative flex-1 sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
@@ -104,7 +105,7 @@ const FeeManager: React.FC<FeeManagerProps> = ({ students, fees, setFees, readOn
            <select
               value={selectedFeeClass}
               onChange={(e) => setSelectedFeeClass(e.target.value)}
-              className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select Class</option>
               {SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}

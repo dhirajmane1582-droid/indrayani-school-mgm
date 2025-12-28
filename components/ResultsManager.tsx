@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Student, StudentResult, AttendanceRecord, CLASSES, SPECIFIC_CLASSES, getSubjectsForClass, Exam, Subject } from '../types';
 import { ChevronDown, Save, BookPlus, Globe, RefreshCcw, Edit3, X, Trash2, CheckSquare, Square, PlusCircle, Info, Calculator, Award, FileDown, Eye, Download, Printer, ChevronRight, User, AlertTriangle, GlobeLock, UserMinus, Eraser } from 'lucide-react';
 import { generateStudentRemark } from '../services/geminiService';
+import * as XLSX from 'xlsx';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -151,6 +152,37 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
           if (sub.evaluationType === 'grade') return sum;
           return sum + sub.maxMarks;
       }, 0);
+  };
+
+  const handleExportMarks = () => {
+    if (!currentExam || filteredStudents.length === 0) return;
+    
+    const maxTotal = calculateTotalMax();
+    const exportData = filteredStudents.map(student => {
+      const result = getStudentResult(student.id);
+      const obtained = calculateTotalObtained(student.id);
+      const percentage = maxTotal > 0 ? ((obtained / maxTotal) * 100).toFixed(2) : '0';
+      
+      const row: any = {
+        'Roll No': student.rollNo,
+        'Student Name': student.name
+      };
+
+      activeSubjects.forEach(sub => {
+        row[sub.name] = result.marks[sub.id] || '';
+      });
+
+      row['Total Obtained'] = obtained;
+      row['Max Marks'] = maxTotal;
+      row['Percentage (%)'] = percentage;
+      
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Marks");
+    XLSX.writeFile(wb, `Marksheet_${selectedClass}_${currentExam.title.replace(/\s+/g, '_')}.xlsx`);
   };
 
   const toggleStandardSubject = (subId: string) => {
@@ -377,6 +409,9 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                    <button onClick={handleDownloadClassPDF} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
                      <FileDown size={14} /> Download PDF
                    </button>
+                   <button onClick={handleExportMarks} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
+                     <Download size={14} /> Export Marks
+                   </button>
                    </>
                )}
             </div>
@@ -435,7 +470,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                 const isPublished = storedRecord?.published;
                 
                 return (
-                    <div key={student.id} className={`bg-white rounded-xl border transition-all ${isExpanded ? 'border-indigo-500 ring-4 ring-indigo-50 shadow-lg' : 'border-slate-200 hover:border-indigo-200'}`}>
+                    <div key={student.id} className={`bg-white rounded-xl border transition-all ${isExpanded ? 'border-indigo-500 ring-4 ring-indigo-100 shadow-lg' : 'border-slate-200 hover:border-indigo-200'}`}>
                         <div 
                             onClick={() => toggleStudentExpansion(student.id)}
                             className="p-4 flex items-center gap-4 cursor-pointer"
