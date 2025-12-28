@@ -180,7 +180,8 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.book_new();
+    // Fix: Using XLSX.utils.book_new() instead of XLSX.book_new()
+    const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Marks");
     XLSX.writeFile(wb, `Marksheet_${selectedClass}_${currentExam.title.replace(/\s+/g, '_')}.xlsx`);
   };

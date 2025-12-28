@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabView, Student, AttendanceRecord, StudentResult, Exam, CustomFieldDefinition, Holiday, AnnualRecord, User, FeeRecord, Homework, Announcement } from './types';
-import StudentManager from './components/StudentManager';
 import AttendanceTracker from './components/AttendanceTracker';
 import ResultsManager from './components/ResultsManager';
 import AnnualResultsManager from './components/AnnualResultsManager';
@@ -13,6 +12,7 @@ import HomeworkManager from './components/HomeworkManager';
 import AnnouncementManager from './components/AnnouncementManager';
 import ExamManager from './components/ExamManager';
 import StudentDashboard from './components/StudentDashboard';
+import StudentManager from './components/StudentManager';
 import { dbService } from './services/db';
 import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2 } from 'lucide-react';
 
@@ -69,23 +69,43 @@ const App: React.FC = () => {
           dbService.getAll('announcements')
         ]);
 
-        setStudents(s);
+        let finalStudents = [...s];
+        let finalUsers = [...u];
+
+        if (finalStudents.length === 0) {
+          const sampleStudent: Student = {
+            id: 'sample-student-id',
+            name: 'John Doe',
+            rollNo: '101',
+            className: 'Class 1',
+            medium: 'English',
+            dob: '2015-05-20',
+            placeOfBirth: 'Mumbai',
+            address: '123 Main St, Koparkhairane, Navi Mumbai',
+            phone: '9876543210',
+            customFields: {}
+          };
+          finalStudents = [sampleStudent];
+        }
+
+        if (!finalUsers.some(user => user.role === 'headmaster')) {
+          finalUsers.push({ 
+            id: 'admin-primary', 
+            username: 'admin', 
+            password: 'admin123', 
+            name: 'Administrator', 
+            role: 'headmaster' 
+          });
+        }
+
+        setStudents(finalStudents);
+        setUsers(finalUsers);
         setAttendance(a);
         setExams(e);
         setResults(r);
         setAnnualRecords(ar);
         setCustomFieldDefs(cf);
         setHolidays(h);
-        
-        // Deployment Guard: Ensure atleast one admin exists
-        const adminExists = u.some(user => user.role === 'headmaster');
-        if (!adminExists) {
-            const defaultAdmin: User = { id: 'admin-primary', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
-            setUsers([...u, defaultAdmin]);
-        } else {
-            setUsers(u);
-        }
-        
         setFees(f);
         setHomework(hw);
         setAnnouncements(ann);
@@ -98,7 +118,6 @@ const App: React.FC = () => {
     hydrate();
   }, []);
 
-  // Sync state to DB
   useEffect(() => { if (isLoaded) scheduleSave('students', students); }, [students, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('attendance', attendance); }, [attendance, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('exams', exams); }, [exams, isLoaded, scheduleSave]);
@@ -116,99 +135,13 @@ const App: React.FC = () => {
     else sessionStorage.removeItem('et_session');
   }, [currentUser]);
 
-  // Handle Multi-Tab Synchronization
-  useEffect(() => {
-    const channel = new BroadcastChannel('school_data_sync');
-    channel.onmessage = (event) => {
-      const { type, data } = event.data;
-      switch (type) {
-        case 'SYNC_STUDENTS': setStudents(data); break;
-        case 'SYNC_FEES': setFees(data); break;
-        case 'SYNC_ATTENDANCE': setAttendance(data); break;
-        case 'SYNC_RESULTS': setResults(data); break;
-        case 'SYNC_HOMEWORK': setHomework(data); break;
-        case 'SYNC_NOTICES': setAnnouncements(data); break;
-        case 'SYNC_USERS': setUsers(data); break;
-      }
-    };
-    return () => channel.close();
-  }, []);
-
-  const broadcast = useCallback((type: string, data: any) => {
-    const channel = new BroadcastChannel('school_data_sync');
-    channel.postMessage({ type, data });
-    channel.close();
-  }, []);
-
-  const updateStudents = useCallback((val: React.SetStateAction<Student[]>) => {
-    setStudents(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_STUDENTS', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
-  const updateFees = useCallback((val: React.SetStateAction<FeeRecord[]>) => {
-    setFees(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_FEES', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
-  const updateUsers = useCallback((val: React.SetStateAction<User[]>) => {
-    setUsers(prev => {
-        const n = typeof val === 'function' ? val(prev) : val;
-        if (n !== prev) broadcast('SYNC_USERS', n);
-        return n;
-    });
-  }, [broadcast]);
-
-  const updateAttendance = useCallback((val: React.SetStateAction<AttendanceRecord[]>) => {
-    setAttendance(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_ATTENDANCE', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
-  const updateResults = useCallback((val: React.SetStateAction<StudentResult[]>) => {
-    setResults(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_RESULTS', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
-  const updateHomework = useCallback((val: React.SetStateAction<Homework[]>) => {
-    setHomework(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_HOMEWORK', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
-  const updateAnnouncements = useCallback((val: React.SetStateAction<Announcement[]>) => {
-    setAnnouncements(prev => { 
-      const n = typeof val === 'function' ? val(prev) : val; 
-      if (n !== prev) broadcast('SYNC_NOTICES', n); 
-      return n; 
-    });
-  }, [broadcast]);
-
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
         <div className="relative">
           <Loader2 size={64} className="text-indigo-600 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <GraduationCap size={24} className="text-indigo-600" />
-          </div>
         </div>
-        <div className="text-center">
-            <p className="text-lg font-black text-slate-800 uppercase tracking-tighter">Indrayani School</p>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Initializing Secure Portal</p>
-        </div>
+        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Indrayani System Initializing...</p>
       </div>
     );
   }
@@ -262,23 +195,24 @@ const App: React.FC = () => {
              ))}
           </div>
         );
-      case 'students': return <StudentManager students={students} setStudents={updateStudents} customFieldDefs={customFieldDefs} setCustomFieldDefs={setCustomFieldDefs} users={users} setUsers={updateUsers} currentUser={currentUser} />;
-      case 'attendance': return <AttendanceTracker students={students} attendance={attendance} setAttendance={updateAttendance} selectedClass={selectedClass ? selectedClass.split('|')[0] : ''} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} holidays={holidays} setHolidays={setHolidays} currentUser={currentUser} />;
+      case 'students': return <StudentManager students={students} setStudents={setStudents} customFieldDefs={customFieldDefs} setCustomFieldDefs={setCustomFieldDefs} users={users} setUsers={setUsers} currentUser={currentUser} />;
+      case 'attendance': return <AttendanceTracker students={students} attendance={attendance} setAttendance={setAttendance} selectedClass={selectedClass ? selectedClass.split('|')[0] : ''} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} holidays={holidays} setHolidays={setHolidays} currentUser={currentUser} />;
       case 'exams': return <ExamManager exams={exams} setExams={setExams} />;
-      case 'results': return <ResultsManager students={students} results={results} setResults={updateResults} attendance={attendance} selectedClass={selectedClass.split('|')[0]} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} exams={exams} setExams={setExams} />;
+      case 'results': return <ResultsManager students={students} results={results} setResults={setResults} attendance={attendance} selectedClass={selectedClass.split('|')[0]} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} exams={exams} setExams={setExams} />;
       case 'annual': return <AnnualResultsManager students={students} annualRecords={annualRecords} setAnnualRecords={setAnnualRecords} selectedClass={selectedClass} setSelectedClass={setSelectedClass} exams={exams} customFieldDefs={customFieldDefs} />;
-      case 'homework': return <HomeworkManager homework={homework} setHomework={updateHomework} selectedClass={selectedClass} setSelectedClass={setSelectedClass} />;
-      case 'notices': return <AnnouncementManager announcements={announcements} setAnnouncements={updateAnnouncements} />;
-      case 'fees': return <FeeManager students={students} fees={fees} setFees={updateFees} readOnly={currentUser.role === 'teacher'} />;
-      case 'users': return <UserManagement users={users} setUsers={updateUsers} currentUser={currentUser} students={students} />;
-      case 'promotion': return <PromotionManager students={students} setStudents={updateStudents} />;
+      case 'homework': return <HomeworkManager homework={homework} setHomework={setHomework} selectedClass={selectedClass} setSelectedClass={setSelectedClass} />;
+      case 'notices': return <AnnouncementManager announcements={announcements} setAnnouncements={setAnnouncements} />;
+      case 'fees': return <FeeManager students={students} fees={fees} setFees={setFees} readOnly={currentUser.role === 'teacher'} />;
+      case 'users': return <UserManagement users={users} setUsers={setUsers} currentUser={currentUser} students={students} />;
+      case 'promotion': return <PromotionManager students={students} setStudents={setStudents} />;
       default: return null;
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-      <header className={`bg-gradient-to-b ${theme.gradient} backdrop-blur-md sticky top-0 z-40 shadow-sm border-b ${theme.lightBg}`}>
+      {/* Header Elevated to z-[100] */}
+      <header className={`bg-gradient-to-b ${theme.gradient} backdrop-blur-md sticky top-0 z-[100] shadow-sm border-b ${theme.lightBg}`}>
          <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
             <div className="flex items-center gap-3">
                {activeTab !== 'home' && <button onClick={() => setActiveTab('home')} className={`p-2.5 bg-white hover:bg-slate-100 rounded-xl text-slate-600 border border-slate-200 active:scale-95 transition-all shadow-sm`}><Home size={22} /></button>}
@@ -300,7 +234,7 @@ const App: React.FC = () => {
          </div>
       </header>
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-4 sm:py-8">{renderContent()}</main>
-      <footer className="py-8 text-center text-[11px] text-slate-400 font-bold tracking-[0.1em] uppercase">© 2025 Indrayani School System • Ready for Production</footer>
+      <footer className="py-8 text-center text-[11px] text-slate-400 font-bold tracking-[0.1em] uppercase">© 2025 Indrayani Education Group</footer>
     </div>
   );
 };

@@ -355,7 +355,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const renderHomeGrid = () => {
     const modules = [
-        { id: 'homework', label: 'My Homework', desc: `${relevantHomework.length} assignments`, icon: BookOpen, color: 'bg-indigo-600', badgeColor: 'bg-rose-500', isNew: hasNewHomework },
+        { 
+          id: 'homework', 
+          label: 'My Homework', 
+          desc: hasNewHomework ? "New homework posted!" : `${relevantHomework.length} assignments`, 
+          icon: BookOpen, 
+          color: 'bg-indigo-600', 
+          badgeColor: 'bg-red-600', 
+          isNew: hasNewHomework 
+        },
         { id: 'exams', label: 'Exam Schedule', desc: 'Upcoming tests', icon: CalendarCheck, color: 'bg-purple-600' },
         { 
           id: 'results', 
@@ -393,7 +401,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-emerald-200 transition-all text-left group flex flex-col justify-between min-h-[140px] sm:min-h-[160px] relative active:scale-95"
                     >
                         {item.isNew && (
-                          <span className={`absolute top-3 right-3 ${item.badgeColor} text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow-sm ring-2 ring-white animate-pulse`}>
+                          <span className={`absolute top-3 right-3 ${item.badgeColor} text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow-md ring-2 ring-white animate-pulse z-10`}>
                             (NEW)
                           </span>
                         )}
@@ -402,7 +410,9 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                         </div>
                         <div>
                             <h3 className="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-emerald-700 transition-colors leading-tight">{item.label}</h3>
-                            <p className="text-[10px] sm:text-xs text-slate-500 mt-1">{item.desc}</p>
+                            <p className={`text-[10px] sm:text-xs mt-1 font-bold ${item.id === 'homework' && item.isNew ? 'text-red-600' : 'text-slate-500'}`}>
+                                {item.desc}
+                            </p>
                         </div>
                         <div className="mt-3 flex items-center text-[10px] font-black text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
                              OPEN MODULE <ChevronRight size={12} className="ml-1" />
@@ -679,7 +689,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center z-50 shadow-lg">
           <button onClick={() => handleTabChange('home')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-emerald-700' : 'text-slate-400'}`}><LayoutDashboard size={20} /><span className="text-[9px] font-black uppercase">Home</span></button>
           <button onClick={() => handleTabChange('homework')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'homework' ? 'text-emerald-700' : 'text-slate-400'} relative`}>
-            {hasNewHomework && <div className="absolute top-1 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white animate-pulse"></div>}
+            {hasNewHomework && <div className="absolute top-1 right-3 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white animate-pulse"></div>}
             <BookOpen size={20} /><span className="text-[9px] font-black uppercase">Study</span>
           </button>
           <button onClick={() => handleTabChange('results')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'results' ? 'text-emerald-700' : 'text-slate-400'} relative`}>

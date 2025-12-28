@@ -1,8 +1,6 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { Student, StudentResult, Subject } from "../types";
-
-// Always use the process.env.API_KEY directly in the constructor
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateStudentRemark = async (
   student: Student,
@@ -10,7 +8,9 @@ export const generateStudentRemark = async (
   subjects: Subject[],
   attendancePercentage: number
 ): Promise<string> => {
-  // Check for API key availability directly from process.env
+  // Fix: Always use direct API key from process.env and create instance inside function.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
   if (!process.env.API_KEY) return "API Key missing. Cannot generate remark.";
   if (!result) return "No result data available.";
 
