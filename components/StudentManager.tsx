@@ -78,6 +78,26 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     setTimeout(() => setToast(null), 4000);
   };
 
+  const normalizeClassName = (val: string): string => {
+    const v = val.trim();
+    // If it's just a number, prepend "Class "
+    if (/^\d+$/.test(v)) return `Class ${v}`;
+    
+    // Check for common variations and map to official CLASSES values
+    const lower = v.toLowerCase();
+    if (lower.includes('nur')) return 'Nursery';
+    if (lower.includes('jr')) return 'Jr. KG';
+    if (lower.includes('sr')) return 'Sr. KG';
+    
+    // Ensure "class 1" becomes "Class 1"
+    if (lower.startsWith('class ')) {
+        const num = lower.replace('class ', '').trim();
+        return `Class ${num.charAt(0).toUpperCase() + num.slice(1)}`;
+    }
+
+    return v;
+  };
+
   const generateCredentials = (student: Student, allUsers: User[]) => {
     const dobParts = student.dob.split('-'); 
     const dobStr = dobParts.length === 3 ? `${dobParts[2]}${dobParts[1]}${dobParts[0]}` : student.dob.replace(/-/g, '');
@@ -242,8 +262,8 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           id: studentId,
           name: (row['Full Name'] || row['Name'] || '').toString().trim(),
           rollNo: (row['Roll No'] || row['Roll'] || '').toString(),
-          className: (row['Class'] || 'Class 1').toString(),
-          medium: (row['Medium'] === 'Semi' ? 'Semi' : 'English'),
+          className: normalizeClassName((row['Class'] || 'Class 1').toString()),
+          medium: (row['Medium']?.toString().toLowerCase().includes('semi') ? 'Semi' : 'English'),
           dob: (row['DOB (YYYY-MM-DD)'] || row['DOB'] || '').toString(),
           placeOfBirth: (row['Place of Birth'] || '').toString(),
           phone: (row['Phone'] || '').toString().replace(/\D/g, ''),
