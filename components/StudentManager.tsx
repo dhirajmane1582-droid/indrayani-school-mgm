@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Settings, UserPlus, ChevronDown, CheckCircle2, Languages, Download, Lock, Key, ArrowRight, Upload, FileSpreadsheet, FileDown, AlertCircle } from 'lucide-react';
+import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Settings, UserPlus, ChevronDown, CheckCircle2, Languages, Download, Lock, Key, ArrowRight, Upload, FileSpreadsheet, FileDown, AlertCircle, Info, Layers } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface StudentManagerProps {
@@ -368,6 +368,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         ) : (
             filteredStudents.map(student => {
                 const studentUser = users.find(u => u.role === 'student' && u.linkedStudentId === student.id);
+                // Filter custom fields that have a value for this student
+                const studentCustomFields = customFieldDefs.filter(def => student.customFields?.[def.id]);
+
                 return (
                     <div key={student.id} className={`bg-white rounded-2xl border transition-all ${expandedStudentId === student.id ? 'border-indigo-600 ring-4 ring-indigo-100 shadow-xl' : 'border-slate-300 hover:border-indigo-400 shadow-sm'}`}>
                         <div className="p-4 flex items-center gap-4 cursor-pointer" onClick={() => setExpandedStudentId(expandedStudentId === student.id ? null : student.id)}>
@@ -385,10 +388,22 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                             <div className="px-5 pb-5 pt-2 animate-in slide-in-from-top-2 duration-300">
                                 <div className="grid grid-cols-1 gap-4">
                                     <div className="bg-slate-100 p-4 rounded-xl border border-slate-300 text-[11px] font-bold">
-                                        <div className="grid grid-cols-2 gap-2">
+                                        <div className="grid grid-cols-2 gap-y-3 gap-x-2">
                                             <div className="flex items-center gap-2 text-slate-900"><Calendar size={14} className="text-slate-600" /> {student.dob || 'No DOB'}</div>
                                             <div className="flex items-center gap-2 text-slate-900"><Phone size={14} className="text-slate-600" /> {student.phone}</div>
                                             <div className="flex items-center gap-2 text-slate-900 col-span-2"><MapPin size={14} className="text-slate-600" /> {student.address}</div>
+                                            
+                                            {/* Display custom field values in details view */}
+                                            {studentCustomFields.length > 0 && (
+                                                <div className="col-span-2 pt-2 mt-1 border-t border-slate-200 grid grid-cols-2 gap-2">
+                                                    {studentCustomFields.map(def => (
+                                                        <div key={def.id} className="flex items-center gap-2 text-slate-700">
+                                                            <div className="bg-white px-1.5 py-0.5 rounded text-[9px] font-black uppercase text-indigo-500 border border-indigo-100">{def.label}</div>
+                                                            <span className="truncate">{student.customFields?.[def.id]}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 text-[11px] font-bold">
@@ -439,7 +454,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                     <form onSubmit={handleAddStudent} className="flex flex-col flex-1 overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                                <div className="col-span-1">
+                                <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
                                     <input 
                                         id="student-name-input"
@@ -453,6 +468,22 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                             <AlertCircle size={12}/> {nameError}
                                         </p>
                                     )}
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Standard (Class)</label>
+                                    <div className="relative">
+                                        <select 
+                                            value={formData.className} 
+                                            onChange={(e) => handleInputChange('className', e.target.value)} 
+                                            className="w-full appearance-none px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:border-[#818cf8] transition-all shadow-sm cursor-pointer"
+                                            required
+                                        >
+                                            {CLASSES.map(cls => (
+                                                <option key={cls.value} value={cls.value}>{cls.label}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                    </div>
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Roll Number</label>
