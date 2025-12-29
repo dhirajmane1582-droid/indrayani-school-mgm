@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, AttendanceRecord, CLASSES, Holiday, User } from '../types';
-import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, CalendarRange, Users, UserCheck, UserMinus } from 'lucide-react';
+import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, CalendarRange, Users, UserCheck, UserMinus, User as UserIcon } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -277,7 +277,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                   />
               </div>
 
-              <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* List View: Conditional Rendering based on statusFilter */}
+              <div className={statusFilter === 'all' ? "grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-2"}>
                   {filteredStudents.length === 0 ? (
                       <div className="col-span-full py-16 text-center text-slate-400 italic bg-white rounded-2xl border border-dashed border-slate-200">
                           No students found matching current filters.
@@ -286,36 +287,54 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                       const status = getStatus(student.id);
                       const disabled = !!currentDayHoliday || isSunday || selectedDate > today;
                       
+                      // MARKING VIEW (ALL TAB)
+                      if (statusFilter === 'all') {
+                          return (
+                              <div key={student.id} className={`bg-white rounded-2xl border p-4 transition-all duration-300 ${status === true ? 'border-emerald-500 ring-4 ring-emerald-50' : status === false ? 'border-rose-500 ring-4 ring-rose-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                                  <div className="flex items-center gap-3 mb-5">
+                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors ${status === true ? 'bg-emerald-600 text-white' : status === false ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                          {student.rollNo}
+                                      </div>
+                                      <div className="flex-1 overflow-hidden">
+                                          <div className="font-bold text-slate-800 text-sm truncate">{student.name}</div>
+                                          <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Roll No: {student.rollNo}</div>
+                                      </div>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <button 
+                                        onClick={() => toggleAttendance(student.id, true)} 
+                                        disabled={disabled}
+                                        className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === true ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 border border-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                                      >
+                                          <Check size={20}/>
+                                          <span className="text-[9px] font-black uppercase tracking-tighter">Present</span>
+                                      </button>
+                                      <button 
+                                        onClick={() => toggleAttendance(student.id, false)} 
+                                        disabled={disabled}
+                                        className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === false ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 border border-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                                      >
+                                          <X size={20}/>
+                                          <span className="text-[9px] font-black uppercase tracking-tighter">Absent</span>
+                                      </button>
+                                  </div>
+                              </div>
+                          );
+                      }
+
+                      // LIST VIEW (PRESENT/ABSENT TABS)
                       return (
-                          <div key={student.id} className={`bg-white rounded-2xl border p-4 transition-all duration-300 ${status === true ? 'border-emerald-500 ring-4 ring-emerald-50' : status === false ? 'border-rose-500 ring-4 ring-rose-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                              <div className="flex items-center gap-3 mb-5">
-                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs transition-colors ${status === true ? 'bg-emerald-600 text-white' : status === false ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                      {student.rollNo}
-                                  </div>
-                                  <div className="flex-1 overflow-hidden">
-                                      <div className="font-bold text-slate-800 text-sm truncate">{student.name}</div>
-                                      <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Roll No: {student.rollNo}</div>
-                                  </div>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-3">
-                                  <button 
-                                    onClick={() => toggleAttendance(student.id, true)} 
-                                    disabled={disabled}
-                                    className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === true ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 border border-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                                  >
-                                      <Check size={20}/>
-                                      <span className="text-[9px] font-black uppercase tracking-tighter">Present</span>
-                                  </button>
-                                  <button 
-                                    onClick={() => toggleAttendance(student.id, false)} 
-                                    disabled={disabled}
-                                    className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === false ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 border border-slate-100'} disabled:opacity-40 disabled:cursor-not-allowed`}
-                                  >
-                                      <X size={20}/>
-                                      <span className="text-[9px] font-black uppercase tracking-tighter">Absent</span>
-                                  </button>
-                              </div>
+                          <div key={student.id} className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between group hover:border-slate-300 transition-all animate-in slide-in-from-left-2 duration-300">
+                               <div className="flex items-center gap-4">
+                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${statusFilter === 'present' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                       {student.rollNo}
+                                   </div>
+                                   <div className="font-bold text-slate-800 text-sm uppercase">{student.name}</div>
+                               </div>
+                               <div className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${statusFilter === 'present' ? 'text-emerald-500 bg-emerald-50/50' : 'text-rose-500 bg-rose-50/50'}`}>
+                                   {statusFilter}
+                               </div>
                           </div>
                       );
                   })}
