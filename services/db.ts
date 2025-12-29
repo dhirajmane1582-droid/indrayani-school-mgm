@@ -34,6 +34,8 @@ export const dbService = {
   async putAll(storeName: string, items: any[]) {
     const db = await initDB();
     const tx = db.transaction(storeName, 'readwrite');
+    // Crucial: Clear existing data to ensure deleted items are removed from DB
+    await tx.store.clear();
     for (const item of items) {
       tx.store.put(item);
     }

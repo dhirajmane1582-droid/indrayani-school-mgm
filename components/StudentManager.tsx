@@ -306,6 +306,14 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     if (window.confirm('Delete field?')) setCustomFieldDefs(prev => prev.filter(f => f.id !== id));
   };
 
+  const handleRemoveStudent = (student: Student) => {
+    if (window.confirm(`Are you sure you want to remove ${student.name.toUpperCase()}? This will also delete their login account and cannot be undone.`)) {
+      setStudents(prev => prev.filter(s => s.id !== student.id));
+      setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
+      showToast("Student Removed", "info");
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-up">
       {toast && (
@@ -397,7 +405,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 </div>
                                 <div className="mt-5 flex items-center justify-end gap-2 pt-4 border-t border-slate-300">
                                     <button onClick={() => editStudent(student)} className="px-4 py-2 bg-indigo-50 text-indigo-800 rounded-lg text-[10px] font-black uppercase border border-indigo-200">Edit</button>
-                                    <button onClick={() => { if(window.confirm('Delete?')) setStudents(prev => prev.filter(s => s.id !== student.id)); }} className="px-4 py-2 bg-rose-50 text-rose-800 rounded-lg text-[10px] font-black uppercase border border-rose-200">Remove</button>
+                                    <button onClick={() => handleRemoveStudent(student)} className="px-4 py-2 bg-rose-50 text-rose-800 rounded-lg text-[10px] font-black uppercase border border-rose-200">Remove</button>
                                 </div>
                             </div>
                         )}
