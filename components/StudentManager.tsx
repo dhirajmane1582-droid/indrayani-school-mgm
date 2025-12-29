@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Settings, UserPlus, ChevronDown, CheckCircle2, Languages, Download, Lock, Key, ArrowRight, Upload, FileSpreadsheet, FileDown } from 'lucide-react';
+import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Settings, UserPlus, ChevronDown, CheckCircle2, Languages, Download, Lock, Key, ArrowRight, Upload, FileSpreadsheet, FileDown, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface StudentManagerProps {
@@ -32,6 +32,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error' | 'info'} | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<Student> & { customId?: string, customPass?: string }>({
     name: '',
@@ -98,6 +99,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
+    if (field === 'name') setNameError(null);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -110,10 +112,15 @@ const StudentManager: React.FC<StudentManagerProps> = ({
 
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^[a-zA-Z0-9 ]+$/.test(formData.name || '')) {
-      alert("Name must be alphanumeric only.");
+    
+    // Updated validation: letters and spaces only, no numbers or special characters.
+    if (!/^[a-zA-Z ]+$/.test(formData.name || '')) {
+      setNameError("Name must contain letters and spaces only (no numbers or special characters).");
+      const nameInput = document.getElementById('student-name-input');
+      nameInput?.focus();
       return;
     }
+
     if (!/^\d{10}$/.test(formData.phone || '')) {
       alert("Phone must be 10 digits.");
       return;
@@ -168,6 +175,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
 
   const resetForm = () => {
     setFormData({ name: '', rollNo: '', className: 'Class 1', medium: 'English', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', customFields: {}, customId: '', customPass: '' });
+    setNameError(null);
   };
 
   const editStudent = (student: Student) => {
@@ -177,6 +185,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         customId: user?.username || '', 
         customPass: user?.password || '' 
     });
+    setNameError(null);
     setIsModalOpen(true);
   };
 
@@ -315,8 +324,8 @@ const StudentManager: React.FC<StudentManagerProps> = ({
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1">
             <button onClick={downloadImportTemplate} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl border border-slate-300 hover:bg-slate-100 transition-colors shadow-sm" title="Download Template"><FileDown size={20} /></button>
-            <button onClick={() => fileInputRef.current?.click()} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"><Upload size={16} /> Import</button>
-            <button onClick={handleExportData} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"><Download size={16} /> Export</button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"><Download size={16} /> Import</button>
+            <button onClick={handleExportData} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-400 text-slate-800 rounded-xl hover:bg-slate-50 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm"><Upload size={16} /> Export</button>
             <button onClick={() => setIsSettingsOpen(true)} className="p-2.5 bg-slate-200 text-slate-800 rounded-xl border border-slate-400 shadow-sm hover:bg-slate-300 transition-colors"><Settings size={20} /></button>
             <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-700 text-white rounded-xl hover:bg-indigo-800 text-[10px] font-black uppercase tracking-widest transition-all shadow-lg whitespace-nowrap"><UserPlus size={18} /> Admit Student</button>
         </div>
@@ -404,9 +413,18 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
-                                    <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} 
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-[#818cf8] transition-all shadow-sm" 
+                                    <input 
+                                        id="student-name-input"
+                                        type="text" 
+                                        value={formData.name} 
+                                        onChange={(e) => handleInputChange('name', e.target.value)} 
+                                        className={`w-full px-4 py-3 bg-white border ${nameError ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100' : 'border-slate-200'} rounded-xl text-sm font-medium text-slate-900 placeholder-slate-300 outline-none focus:border-[#818cf8] transition-all shadow-sm`} 
                                         placeholder="e.g. John Doe" required />
+                                    {nameError && (
+                                        <p className="text-[10px] text-rose-600 font-bold mt-1.5 flex items-center gap-1 animate-in slide-in-from-top-1">
+                                            <AlertCircle size={12}/> {nameError}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Roll Number</label>
@@ -500,7 +518,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 Cancel
                             </button>
                             <button type="submit" 
-                                className="px-10 py-3.5 bg-[#a5b4fc] text-white rounded-xl text-base font-bold shadow-lg shadow-indigo-100 hover:bg-[#818cf8] transition-all active:scale-95 leading-none">
+                                className="px-10 py-3.5 bg-indigo-600 text-white rounded-xl text-base font-bold shadow-lg shadow-indigo-100 hover:bg-[#818cf8] transition-all active:scale-95 leading-none glow-indigo">
                                 Save
                             </button>
                         </div>

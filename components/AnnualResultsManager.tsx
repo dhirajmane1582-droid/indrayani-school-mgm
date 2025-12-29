@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Student, AnnualRecord, SPECIFIC_CLASSES, getSubjectsForClass, Exam, CustomFieldDefinition } from '../types';
-import { Save, ChevronLeft, ChevronRight, Search, CheckCircle2, AlertCircle, CheckSquare, Square, FileText, X, ArrowLeft, ArrowRight, Printer, Download, Settings, Plus, Trash2, Eye, Share2, Edit3 } from 'lucide-react';
+import { Save, ChevronLeft, ChevronRight, Search, CheckCircle2, AlertCircle, CheckSquare, Square, FileText, X, ArrowLeft, ArrowRight, Printer, Download, Settings, Plus, Trash2, Eye, Share2, Edit3, Upload } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -473,7 +473,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                           className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"
                           title="Download PDF"
                         >
-                           <Download size={20} />
+                           <Upload size={20} />
                        </button>
                        <div className="text-xs font-medium text-slate-400 hidden sm:block">
                            {currentIndex + 1} of {filteredStudents.length}
@@ -582,7 +582,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                   </button>
                   <button 
                       onClick={() => setEditingStudentId(null)}
-                      className="flex-[2] bg-indigo-600 text-white py-3 px-6 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all"
+                      className="flex-[2] bg-indigo-600 text-white py-3 px-6 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all glow-indigo"
                   >
                       Save & Close
                   </button>
@@ -701,7 +701,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                   <Settings size={16} /> Settings
               </button>
               <button onClick={() => downloadClassPDF()} className="flex items-center gap-2 bg-white text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium">
-                  <Download size={16} /> Class PDF
+                  <Upload size={16} /> Class PDF
               </button>
               <div className="flex-1"></div>
               <button onClick={() => handlePublishAll(true)} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 text-sm font-bold">
@@ -817,7 +817,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                     <h3 className="font-bold text-slate-800">Report Card Preview</h3>
                     <div className="flex gap-2">
                         <button onClick={() => downloadPDF(previewData.student, previewData.record)} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">
-                            <Download size={16}/> Download
+                            <Upload size={16}/> Download
                         </button>
                         <button onClick={() => setPreviewData(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                             <X size={20}/>

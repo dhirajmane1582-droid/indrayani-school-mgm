@@ -36,6 +36,16 @@
 @layer components {
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  
+  .glow-indigo {
+    animation: glow-pulse 2.5s infinite ease-in-out;
+  }
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 8px 1px rgba(129, 140, 248, 0.3), 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+  50% { box-shadow: 0 0 22px 6px rgba(129, 140, 248, 0.6), 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+  100% { box-shadow: 0 0 8px 1px rgba(129, 140, 248, 0.3), 0 4px 6px -1px rgb(0 0 0 / 0.1); }
 }
 
 * {

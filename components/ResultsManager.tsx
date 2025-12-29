@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Student, StudentResult, AttendanceRecord, CLASSES, SPECIFIC_CLASSES, getSubjectsForClass, Exam, Subject } from '../types';
-import { ChevronDown, Save, BookPlus, Globe, RefreshCcw, Edit3, X, Trash2, CheckSquare, Square, PlusCircle, Info, Calculator, Award, FileDown, Eye, Download, Printer, ChevronRight, User, AlertTriangle, GlobeLock, UserMinus, Eraser } from 'lucide-react';
+import { ChevronDown, Save, BookPlus, Globe, RefreshCcw, Edit3, X, Trash2, CheckSquare, Square, PlusCircle, Info, Calculator, Award, FileDown, Eye, Download, Printer, ChevronRight, User, AlertTriangle, GlobeLock, UserMinus, Eraser, Upload } from 'lucide-react';
 import { generateStudentRemark } from '../services/geminiService';
 import * as XLSX from 'xlsx';
 // @ts-ignore
@@ -180,7 +180,6 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
-    // Fix: Using XLSX.utils.book_new() instead of XLSX.book_new()
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Marks");
     XLSX.writeFile(wb, `Marksheet_${selectedClass}_${currentExam.title.replace(/\s+/g, '_')}.xlsx`);
@@ -334,7 +333,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
           margin: 0,
           filename: `ResultSheet_${selectedClass}_${currentExam?.title}.pdf`,
           image: { type: 'jpeg' as const, quality: 0.98 },
-          html2canvas: { scale: 2 }, // Scale of 2 is safer for class-wide bulk sheets
+          html2canvas: { scale: 2 }, 
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
 
@@ -411,7 +410,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                      <FileDown size={14} /> Download PDF
                    </button>
                    <button onClick={handleExportMarks} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
-                     <Download size={14} /> Export Marks
+                     <Upload size={14} /> Export Marks
                    </button>
                    </>
                )}
@@ -432,7 +431,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                    <button onClick={() => handlePublishResults(true)} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all text-xs font-bold">
                        <Globe size={14}/> Publish Selected
                    </button>
-                   <button onClick={() => { setToastMsg("Changes Saved"); setTimeout(() => setToastMsg(''), 2000); }} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-all text-xs font-bold">
+                   <button onClick={() => { setToastMsg("Changes Saved"); setTimeout(() => setToastMsg(''), 2000); }} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-all text-xs font-bold glow-indigo">
                        <Save size={14} /> <span>Save All</span>
                   </button>
               </div>
@@ -542,7 +541,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                                 </div>
                                 <button 
                                     onClick={() => setExpandedStudentId(null)}
-                                    className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
+                                    className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all glow-indigo"
                                 >
                                     <Save size={16}/> Save & Finish
                                 </button>
@@ -633,7 +632,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                             onClick={handleDownloadClassPDF} 
                             className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
                           >
-                            <Download size={18}/> Download PDF
+                            <Upload size={18}/> Download PDF
                           </button>
                           <button onClick={() => setIsPreviewOpen(false)} className="p-2.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                             <X size={24}/>

@@ -33,7 +33,7 @@ const FeeManager: React.FC<FeeManagerProps> = ({ students, fees, setFees, readOn
     if (!selectedFeeClass) return [];
     const [className, classMedium] = selectedFeeClass.split('|');
     
-    return students.filter(s => {
+    const list = students.filter(s => {
       const matchesClass = s.className === className;
       const studentMedium = s.medium || 'English';
       const matchesMedium = studentMedium === classMedium;
@@ -41,7 +41,22 @@ const FeeManager: React.FC<FeeManagerProps> = ({ students, fees, setFees, readOn
       const matchesSearch = s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q);
       return matchesClass && matchesMedium && matchesSearch;
     });
-  }, [students, selectedFeeClass, searchQuery]);
+
+    // Sorting logic: Unpaid (0 total paid) students at the top.
+    return list.sort((a, b) => {
+        const aPaid = fees.filter(f => f.studentId === a.id).reduce((sum, f) => sum + f.amount, 0);
+        const bPaid = fees.filter(f => f.studentId === b.id).reduce((sum, f) => sum + f.amount, 0);
+        
+        if (aPaid === 0 && bPaid !== 0) return -1;
+        if (aPaid !== 0 && bPaid === 0) return 1;
+        
+        // If both are paid or both are unpaid, sort by amount ascending
+        if (aPaid !== bPaid) return aPaid - bPaid;
+        
+        // Secondary sort by roll number
+        return (parseInt(a.rollNo) || 0) - (parseInt(b.rollNo) || 0);
+    });
+  }, [students, selectedFeeClass, searchQuery, fees]);
 
   const getStudentStats = (studentId: string) => {
       const studentFees = fees.filter(f => f.studentId === studentId);
