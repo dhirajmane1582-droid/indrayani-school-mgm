@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, AttendanceRecord, CLASSES, Holiday, User } from '../types';
-import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, CalendarRange } from 'lucide-react';
+import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, CalendarRange, Users, UserCheck, UserMinus } from 'lucide-react';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -13,6 +13,8 @@ interface AttendanceTrackerProps {
   setHolidays: React.Dispatch<React.SetStateAction<Holiday[]>>;
   currentUser: User;
 }
+
+type AttendanceFilter = 'all' | 'present' | 'absent';
 
 const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   students,
@@ -36,26 +38,53 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AttendanceFilter>('all');
   
-  // New Holiday Form State
+  // Holiday Form State
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState(today);
   const [newHolidayEndDate, setNewHolidayEndDate] = useState(today);
   const [isRange, setIsRange] = useState(false);
 
-  const filteredStudents = useMemo(() => {
-    let list = selectedClass ? students.filter(s => s.className === selectedClass) : [];
-    if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        list = list.filter(s => s.name.toLowerCase().includes(q) || s.rollNo.includes(q));
-    }
-    return list.sort((a,b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
-  }, [students, selectedClass, searchQuery]);
-
   const getStatus = (studentId: string) => {
     const record = attendance.find(r => r.studentId === studentId && r.date === selectedDate);
     return record?.present;
   };
+
+  const classStudents = useMemo(() => {
+    return selectedClass ? students.filter(s => s.className === selectedClass) : [];
+  }, [students, selectedClass]);
+
+  const stats = useMemo(() => {
+    const total = classStudents.length;
+    let present = 0;
+    let absent = 0;
+    classStudents.forEach(s => {
+      const status = getStatus(s.id);
+      if (status === true) present++;
+      else if (status === false) absent++;
+    });
+    return { total, present, absent, unmarked: total - (present + absent) };
+  }, [classStudents, attendance, selectedDate]);
+
+  const filteredStudents = useMemo(() => {
+    let list = [...classStudents];
+
+    // Filter by Search
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(s => s.name.toLowerCase().includes(q) || s.rollNo.includes(q));
+    }
+
+    // Filter by Status Tab
+    if (statusFilter === 'present') {
+        list = list.filter(s => getStatus(s.id) === true);
+    } else if (statusFilter === 'absent') {
+        list = list.filter(s => getStatus(s.id) === false);
+    }
+
+    return list.sort((a,b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
+  }, [classStudents, attendance, selectedDate, searchQuery, statusFilter]);
 
   const toggleAttendance = (studentId: string, present: boolean) => {
       if (currentDayHoliday || isSunday || selectedDate > today) return;
@@ -80,14 +109,14 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 
   const markAll = (present: boolean) => {
     if (currentDayHoliday || isSunday || !selectedClass || selectedDate > today) return;
-    const newRecords = filteredStudents.map(student => ({
+    const newRecords = classStudents.map(student => ({
         id: crypto.randomUUID(),
         date: selectedDate,
         studentId: student.id,
         present
     }));
     setAttendance(prev => {
-      const otherRecords = prev.filter(r => r.date !== selectedDate || !filteredStudents.find(s => s.id === r.studentId));
+      const otherRecords = prev.filter(r => r.date !== selectedDate || !classStudents.find(s => s.id === r.studentId));
       return [...otherRecords, ...newRecords];
     });
   };
@@ -188,21 +217,53 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           </div>
       ) : (
           <div className={`space-y-4 transition-opacity duration-300 ${(currentDayHoliday || isSunday) ? 'opacity-60' : 'opacity-100'}`}>
-              <div className="flex gap-2">
-                  <button 
-                    onClick={() => markAll(true)} 
-                    disabled={!!currentDayHoliday || isSunday || selectedDate > today} 
-                    className="flex-1 py-4 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all active:scale-95"
-                  >
-                      Mark All Present
-                  </button>
-                  <button 
-                    onClick={() => markAll(false)} 
-                    disabled={!!currentDayHoliday || isSunday || selectedDate > today} 
-                    className="flex-1 py-4 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all active:scale-95"
-                  >
-                      Mark All Absent
-                  </button>
+              
+              {/* Quick Actions Row */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <button 
+                        onClick={() => markAll(true)} 
+                        disabled={!!currentDayHoliday || isSunday || selectedDate > today} 
+                        className="flex-1 sm:px-6 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all active:scale-95"
+                    >
+                        Mark All Present
+                    </button>
+                    <button 
+                        onClick={() => markAll(false)} 
+                        disabled={!!currentDayHoliday || isSunday || selectedDate > today} 
+                        className="flex-1 sm:px-6 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none transition-all active:scale-95"
+                    >
+                        Mark All Absent
+                    </button>
+                </div>
+
+                {/* Present/Absent Tabs */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full sm:w-auto">
+                    <button 
+                        onClick={() => setStatusFilter('all')}
+                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${statusFilter === 'all' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <Users size={14}/>
+                        <span>All</span>
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${statusFilter === 'all' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>{stats.total}</span>
+                    </button>
+                    <button 
+                        onClick={() => setStatusFilter('present')}
+                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${statusFilter === 'present' ? 'bg-white text-emerald-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <UserCheck size={14}/>
+                        <span>Present</span>
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${statusFilter === 'present' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>{stats.present}</span>
+                    </button>
+                    <button 
+                        onClick={() => setStatusFilter('absent')}
+                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${statusFilter === 'absent' ? 'bg-white text-rose-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <UserMinus size={14}/>
+                        <span>Absent</span>
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${statusFilter === 'absent' ? 'bg-rose-100 text-rose-600' : 'bg-slate-200 text-slate-500'}`}>{stats.absent}</span>
+                    </button>
+                </div>
               </div>
 
               <div className="relative">
@@ -217,7 +278,11 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
               </div>
 
               <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredStudents.map(student => {
+                  {filteredStudents.length === 0 ? (
+                      <div className="col-span-full py-16 text-center text-slate-400 italic bg-white rounded-2xl border border-dashed border-slate-200">
+                          No students found matching current filters.
+                      </div>
+                  ) : filteredStudents.map(student => {
                       const status = getStatus(student.id);
                       const disabled = !!currentDayHoliday || isSunday || selectedDate > today;
                       
@@ -348,7 +413,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                                       {formatDateShort(h.date)}
                                                       {h.endDate && (
                                                           <>
-                                                            <ArrowRight size={10} className="text-slate-300" />
+                                                            <ArrowRightIcon size={10} className="text-slate-300" />
                                                             {formatDateShort(h.endDate)}
                                                           </>
                                                       )}
@@ -387,7 +452,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
 };
 
 // Simple ArrowRight icon for range display since it wasn't imported
-const ArrowRight = ({ size, className }: { size: number, className?: string }) => (
+const ArrowRightIcon = ({ size, className }: { size: number, className?: string }) => (
     <svg 
         width={size} 
         height={size} 
