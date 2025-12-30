@@ -381,9 +381,11 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
   };
 
   const downloadPDF = async (student: Student, record: AnnualRecord) => {
-      const exporter = (html2pdf as any).default || html2pdf;
+      // Robust library resolution for html2pdf
+      const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
       if (typeof exporter !== 'function') {
-          console.error("html2pdf not found or not a function.");
+          console.error("html2pdf library could not be resolved.");
+          alert("PDF library failed to load.");
           return;
       }
 
@@ -401,14 +403,20 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       };
 
       try {
-          await exporter().set(opt).from(element).save();
+          const worker = exporter();
+          if (worker && typeof worker.set === 'function') {
+            await worker.set(opt).from(element).save();
+          } else {
+            await exporter(element, opt);
+          }
       } catch (err) {
           console.error("PDF Download Error:", err);
+          alert("Failed to download PDF.");
       }
   };
 
   const downloadClassPDF = async () => {
-      const exporter = (html2pdf as any).default || html2pdf;
+      const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
       if (typeof exporter !== 'function') return;
 
       if (!window.confirm(`Generate PDF for all ${filteredStudents.length} students? This may take a moment.`)) return;
@@ -431,9 +439,15 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       };
 
       try {
-          await exporter().set(opt).from(element).save();
+          const worker = exporter();
+          if (worker && typeof worker.set === 'function') {
+            await worker.set(opt).from(element).save();
+          } else {
+            await exporter(element, opt);
+          }
       } catch (err) {
           console.error("Bulk PDF Download Error:", err);
+          alert("Failed to download bulk PDF.");
       }
   };
 
@@ -812,7 +826,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
 
       {previewData && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-            <div className="bg-slate-200 rounded-xl shadow-2xl max-w-5xl w-full h-full max-h-[90vh] flex flex-col">
+            <div className="bg-slate-200 rounded-xl shadow-2xl max-w-5xl w-full h-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="bg-white p-4 border-b border-slate-200 flex justify-between items-center rounded-t-xl">
                     <h3 className="font-bold text-slate-800">Report Card Preview</h3>
                     <div className="flex gap-2">

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Student, AttendanceRecord, CLASSES, Holiday, User } from '../types';
 import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, CalendarRange, Users, UserCheck, UserMinus, User as UserIcon } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -137,8 +138,9 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     setIsRange(false);
   };
 
-  const handleDeleteHoliday = (id: string) => {
+  const handleDeleteHoliday = async (id: string) => {
       if (window.confirm("Delete this holiday?")) {
+          await dbService.delete('holidays', id);
           setHolidays(prev => prev.filter(h => h.id !== id));
       }
   };

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { User, UserRole, Student } from '../types';
 import { Trash2, UserPlus, Shield, GraduationCap, X, Check, User as UserIcon, Search, Plus } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface UserManagementProps {
   users: User[];
@@ -66,12 +67,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
     setStudentSearch('');
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (id === currentUser.id) {
       alert("You cannot delete your own account.");
       return;
     }
     if (window.confirm('Are you sure you want to delete this user?')) {
+      await dbService.delete('users', id);
       setUsers(users.filter(u => u.id !== id));
     }
   };

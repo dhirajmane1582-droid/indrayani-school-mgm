@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Announcement, SPECIFIC_CLASSES } from '../types';
 import { Megaphone, Trash2, Plus, Bell } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface AnnouncementManagerProps {
   announcements: Announcement[];
@@ -35,8 +36,9 @@ const AnnouncementManager: React.FC<AnnouncementManagerProps> = ({ announcements
       setTargetClass('All');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
       if (window.confirm("Delete this announcement?")) {
+          await dbService.delete('announcements', id);
           setAnnouncements(prev => prev.filter(a => a.id !== id));
       }
   };

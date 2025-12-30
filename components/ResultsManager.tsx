@@ -6,6 +6,7 @@ import { generateStudentRemark } from '../services/geminiService';
 import * as XLSX from 'xlsx';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
+import { dbService } from '../services/db';
 
 interface ResultsManagerProps {
   students: Student[];
@@ -149,6 +150,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
 
   const calculateTotalMax = () => {
       return activeSubjects.reduce((sum, sub) => {
+          if (sum === undefined) return 0;
           if (sub.evaluationType === 'grade') return sum;
           return sum + sub.maxMarks;
       }, 0);
@@ -234,7 +236,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
     setTimeout(() => setToastMsg(''), 2500);
   };
 
-  const handleRemoveResults = useCallback((studentIdsToRemove: Set<string>) => {
+  const handleRemoveResults = useCallback(async (studentIdsToRemove: Set<string>) => {
     if (studentIdsToRemove.size === 0 || !selectedExamId) return;
     
     const count = studentIdsToRemove.size;
@@ -243,6 +245,15 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
       : `Remove results for ${count} students? This will delete all marks for this exam. This cannot be undone.`;
 
     if (window.confirm(confirmMsg)) {
+        // Find result IDs to delete from cloud
+        const resultsToDelete = results.filter(r => 
+          r.examId === selectedExamId && studentIdsToRemove.has(r.studentId)
+        );
+
+        for (const res of resultsToDelete) {
+          await dbService.delete('results', res.id);
+        }
+
         setResults(prev => prev.filter(r => 
           !(r.examId === selectedExamId && studentIdsToRemove.has(r.studentId))
         ));
@@ -255,7 +266,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
         setToastMsg(`${count} Result${count > 1 ? 's' : ''} Removed`);
         setTimeout(() => setToastMsg(''), 2500);
     }
-  }, [selectedExamId, expandedStudentId, setResults]);
+  }, [selectedExamId, expandedStudentId, results, setResults]);
 
   const generateClassPDFContent = () => {
       const schoolName = selectedMedium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
@@ -319,10 +330,11 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
   const handleDownloadClassPDF = async () => {
       if (filteredStudents.length === 0) return alert("No students to generate PDF for.");
       
-      const exporter = (html2pdf as any).default || html2pdf;
+      // Robust library resolution for html2pdf
+      const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
       if (typeof exporter !== 'function') {
-          console.error("html2pdf library could not be resolved.");
-          alert("PDF library failed to load.");
+          console.error("html2pdf library could not be resolved as a function.");
+          alert("PDF library failed to load. Please refresh and try again.");
           return;
       }
 
@@ -339,12 +351,18 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
 
       try {
           setToastMsg("Generating PDF...");
-          await exporter().set(opt).from(element).save();
+          const worker = exporter();
+          if (worker && typeof worker.set === 'function') {
+            await worker.set(opt).from(element).save();
+          } else {
+            // Fallback for older API or direct call
+            await exporter(element, opt);
+          }
           setToastMsg("PDF Ready");
           setTimeout(() => setToastMsg(''), 2000);
       } catch (err) {
           console.error("PDF Download Error:", err);
-          alert("Failed to generate PDF.");
+          alert("Failed to generate PDF. Check console for details.");
       }
   };
 
@@ -597,7 +615,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                                             {currentEval === 'marks' && (
                                                 <div className="flex items-center gap-2">
                                                     <label className="text-[10px] font-bold text-slate-400 uppercase">Max:</label>
-                                                    <input type="number" value={currentMax} onChange={(e) => handleUpdateMaxMarks(sub.id, parseInt(e.target.value) || 0)} disabled={!isActive} className="w-16 px-2 py-1 bg-white border border-slate-300 rounded text-center text-xs font-black text-slate-800 focus:border-indigo-500 outline-none"/>
+                                                    <input type="number" value={currentMax} onChange={(e) => handleUpdateMaxMarks(sub.id, parseInt(e.target.value) || 0)} disabled={!isActive} className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-center text-xs font-black text-slate-800 focus:border-indigo-500 outline-none"/>
                                                 </div>
                                             )}
                                         </div>

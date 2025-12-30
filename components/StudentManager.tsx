@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
 import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, Settings, UserPlus, ChevronDown, CheckCircle2, Languages, Download, Lock, Key, ArrowRight, Upload, FileSpreadsheet, FileDown, AlertCircle, Info, Layers } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { dbService } from '../services/db';
 
 interface StudentManagerProps {
   students: Student[];
@@ -303,11 +304,22 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const removeFieldDef = (id: string) => {
-    if (window.confirm('Delete field?')) setCustomFieldDefs(prev => prev.filter(f => f.id !== id));
+    if (window.confirm('Delete field?')) {
+        dbService.delete('customFields', id);
+        setCustomFieldDefs(prev => prev.filter(f => f.id !== id));
+    }
   };
 
-  const handleRemoveStudent = (student: Student) => {
+  const handleRemoveStudent = async (student: Student) => {
     if (window.confirm(`Are you sure you want to remove ${student.name.toUpperCase()}? This will also delete their login account and cannot be undone.`)) {
+      // Explicitly delete from cloud to prevent re-sync from other devices
+      await dbService.delete('students', student.id);
+      const studentUser = users.find(u => u.linkedStudentId === student.id);
+      if (studentUser) {
+          await dbService.delete('users', studentUser.id);
+      }
+      
+      // Update local state to reflect UI
       setStudents(prev => prev.filter(s => s.id !== student.id));
       setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
       showToast("Student Removed", "info");

@@ -195,9 +195,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     if (!student || !studentAnnualRecord) return;
     setIsDownloading(true);
 
-    const h2p = (html2pdf as any).default || html2pdf;
+    // Robust library resolution for html2pdf
+    const h2p = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
     if (typeof h2p !== 'function') {
         console.error("html2pdf library resolution failed.");
+        alert("PDF generator not found. Please refresh and try again.");
         setIsDownloading(false);
         return;
     }
@@ -305,9 +307,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     };
 
     try {
-        await h2p().set(opt).from(element).save();
+        const worker = h2p();
+        if (worker && typeof worker.set === 'function') {
+            await worker.set(opt).from(element).save();
+        } else {
+            await h2p(element, opt);
+        }
     } catch (err) {
         console.error("PDF Export Error:", err);
+        alert("PDF export failed. Check browser settings.");
     } finally {
         setIsDownloading(false);
     }

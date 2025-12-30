@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Homework, SPECIFIC_CLASSES, getSubjectsForClass } from '../types';
 import { Plus, Trash2, Calendar, BookOpen, ChevronDown, CheckCircle2, Edit2, X, Save } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface HomeworkManagerProps {
   homework: Homework[];
@@ -59,7 +60,7 @@ const HomeworkManager: React.FC<HomeworkManagerProps> = ({
       if (!className) return [];
       return homework
         .filter(h => h.className === className && h.medium === medium)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(a.date).getTime());
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [homework, className, medium]);
 
   const handleAddOrUpdate = (e: React.FormEvent) => {
@@ -130,8 +131,9 @@ const HomeworkManager: React.FC<HomeworkManagerProps> = ({
       if (classSubjects.length > 0) setSubject(classSubjects[0].name);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Delete this homework assignment?")) {
+        await dbService.delete('homework', id);
         setHomework(prev => prev.filter(h => h.id !== id));
         if (editingId === id) {
             cancelEdit();

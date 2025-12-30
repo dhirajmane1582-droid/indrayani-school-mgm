@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Exam, SIMPLIFIED_CLASSES, TimetableEntry, getSubjectsForClass } from '../types';
 import { Plus, Trash2, CalendarCheck, Check, Layers, AlertCircle, Clock, Calendar, RefreshCcw, Download, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface ExamManagerProps {
   exams: Exam[];
@@ -161,8 +162,12 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
       setActiveView('edit');
   };
 
-  const handleDeleteGroup = (examIds: string[]) => {
+  const handleDeleteGroup = async (examIds: string[]) => {
       if(window.confirm("Delete this exam? Results associated with it will be lost for all selected classes.")) {
+          // Explicitly delete each exam in the group from Supabase
+          for (const id of examIds) {
+              await dbService.delete('exams', id);
+          }
           setExams(prev => prev.filter(e => !examIds.includes(e.id)));
       }
   };
