@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Exam, SIMPLIFIED_CLASSES, TimetableEntry, getSubjectsForClass } from '../types';
-import { Plus, Trash2, CalendarCheck, Check, Layers, AlertCircle, Clock, Calendar, RefreshCcw, Download, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
+import { Plus, Trash2, CalendarCheck, Check, Layers, AlertCircle, Clock, Calendar, RefreshCcw, Download, ArrowUp, ArrowDown, Edit2, Eraser } from 'lucide-react';
 import { dbService } from '../services/db';
 
 interface ExamManagerProps {
@@ -111,14 +111,8 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
   };
 
   const handleSave = () => {
-      if (!title || selectedClasses.length === 0 || timetable.length === 0) {
-          alert("Please fill in the title, select at least one class, and add timetable entries.");
-          return;
-      }
-
-      const incomplete = timetable.some(t => !t.date || !t.subject);
-      if (incomplete) {
-          alert("Please ensure all subjects in the timetable have a Date and Subject Name.");
+      if (!title || selectedClasses.length === 0) {
+          alert("Please fill in the title and select at least one class.");
           return;
       }
 
@@ -127,7 +121,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
       if (activeView === 'edit' && editingExamIds) {
           setExams(prev => prev.map(e => 
               editingExamIds.includes(e.id) 
-              ? { ...e, title, type, date: sortedTimetable[0].date, timetable: sortedTimetable } 
+              ? { ...e, title, type, timetable: sortedTimetable } 
               : e
           ));
           setSuccessMsg(`Successfully updated "${title}".`);
@@ -136,7 +130,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
               id: crypto.randomUUID(),
               title,
               type,
-              date: sortedTimetable[0].date,
+              date: sortedTimetable[0]?.date || new Date().toISOString().split('T')[0],
               className: cls,
               published: true,
               timetable: sortedTimetable,
@@ -163,8 +157,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
   };
 
   const handleDeleteGroup = async (examIds: string[]) => {
-      if(window.confirm("Delete this exam? Results associated with it will be lost for all selected classes.")) {
-          // Explicitly delete each exam in the group from Supabase
+      if(window.confirm("Delete this exam entirely? This will remove it from all devices and student portals.")) {
           for (const id of examIds) {
               await dbService.delete('exams', id);
           }
@@ -172,12 +165,22 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
       }
   };
 
+  const handleClearTimetable = () => {
+      if (window.confirm("Clear all subjects from this timetable? This cannot be undone.")) {
+          setTimetable([]);
+      }
+  };
+
   const groupedExams = useMemo(() => {
     const groups: Record<string, { exam: Exam, classNames: string[], allIds: string[] }> = {};
     
     exams.forEach(exam => {
-        const timetableSig = exam.timetable ? JSON.stringify(exam.timetable.map(t => ({ d: t.date, s: t.subject }))) : 'no-tt';
-        const key = `${exam.title}|${exam.type}|${exam.date}|${timetableSig}`;
+        const tt = Array.isArray(exam.timetable) ? exam.timetable : [];
+        const timetableSig = tt.length > 0 
+            ? JSON.stringify(tt.map(t => ({ d: t.date, s: t.subject }))) 
+            : 'no-tt';
+            
+        const key = `${exam.title}|${exam.type}|${timetableSig}`;
         
         if (!groups[key]) {
             groups[key] = {
@@ -199,13 +202,12 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
         <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
             <div>
                <h2 className="text-xl font-bold text-slate-800">Exam Planner</h2>
-               <p className="text-sm text-slate-500">Create timetables and publish exams.</p>
+               <p className="text-sm text-slate-500">Manage schedules & sync across all devices.</p>
             </div>
             {activeView === 'list' ? (
                 <button 
                   onClick={() => { resetForm(); setActiveView('create'); }}
                   className="bg-indigo-600 text-white w-10 h-10 rounded-xl hover:bg-indigo-700 shadow-sm flex items-center justify-center active:scale-95 transition-all"
-                  title="Create Exam"
                 >
                     <Plus size={24} />
                 </button>
@@ -279,22 +281,28 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                 </label>
                             ))}
                         </div>
-                        {activeView === 'edit' && <p className="mt-3 text-[10px] text-slate-400 italic">Target classes cannot be changed during edit.</p>}
                     </div>
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 min-h-[500px] flex flex-col">
-                        <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2 flex justify-between items-center text-sm uppercase tracking-wider">
-                            Timetable Builder
-                            <button
-                                onClick={handleLoadStandardSubjects}
-                                disabled={selectedClasses.length === 0}
-                                className="text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100 disabled:opacity-50 flex items-center gap-2 transition-colors"
-                            >
-                                <Download size={14} /> Load Subjects
-                            </button>
-                        </h3>
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Timetable Builder</h3>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleLoadStandardSubjects}
+                                    className="text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-100 hover:bg-indigo-100 flex items-center gap-2"
+                                >
+                                    <Download size={14} /> Subjects
+                                </button>
+                                <button
+                                    onClick={handleClearTimetable}
+                                    className="text-[10px] font-black uppercase bg-rose-50 text-rose-700 px-3 py-1.5 rounded-lg border border-rose-100 hover:bg-rose-100 flex items-center gap-2"
+                                >
+                                    <Eraser size={14} /> Clear
+                                </button>
+                            </div>
+                        </div>
                         
                         <div className="grid grid-cols-12 gap-2 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 items-end">
                             <div className="col-span-4">
@@ -303,7 +311,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                   type="date"
                                   value={ttDate}
                                   onChange={(e) => setTtDate(e.target.value)}
-                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all text-slate-900"
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
                                 />
                             </div>
                             <div className="col-span-6">
@@ -312,17 +320,13 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                   type="text"
                                   value={ttSubject}
                                   onChange={(e) => setTtSubject(e.target.value)}
-                                  placeholder="e.g. Drawing"
-                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all text-slate-900 placeholder-slate-400"
+                                  placeholder="e.g. Science"
+                                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all"
                                   onKeyDown={(e) => e.key === 'Enter' && handleAddTimetableRow()}
                                 />
                             </div>
                             <div className="col-span-2">
-                                <button 
-                                  onClick={handleAddTimetableRow}
-                                  className="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 flex items-center justify-center transition-all active:scale-95 shadow-sm"
-                                  title="Add Row"
-                                >
+                                <button onClick={handleAddTimetableRow} className="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 flex items-center justify-center transition-all shadow-sm">
                                     <Plus size={20} />
                                 </button>
                             </div>
@@ -332,63 +336,35 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                             {timetable.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-300 py-12">
                                     <CalendarCheck size={48} className="mb-2 opacity-20" />
-                                    <p className="text-sm font-medium">Timetable is empty. Load standard subjects or add manually.</p>
+                                    <p className="text-sm font-medium">Timetable is empty.</p>
                                 </div>
                             ) : (
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                                         <tr>
-                                            <th className="px-4 py-3 w-44 uppercase text-[10px] tracking-wider">Date</th>
+                                            <th className="px-4 py-3 uppercase text-[10px] tracking-wider">Date</th>
                                             <th className="px-4 py-3 uppercase text-[10px] tracking-wider">Subject</th>
-                                            <th className="px-4 py-3 w-28 text-right uppercase text-[10px] tracking-wider">Actions</th>
+                                            <th className="px-4 py-3 w-28 text-right uppercase text-[10px] tracking-wider">Move</th>
+                                            <th className="px-4 py-3 w-16 text-right"></th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {timetable.map((row, index) => (
                                             <tr key={row.id} className="hover:bg-slate-50/50">
                                                 <td className="px-2 py-2">
-                                                    <input 
-                                                      type="date" 
-                                                      value={row.date} 
-                                                      onChange={(e) => handleUpdateEntry(row.id, 'date', e.target.value)}
-                                                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
-                                                    />
+                                                    <input type="date" value={row.date} onChange={(e) => handleUpdateEntry(row.id, 'date', e.target.value)} className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-slate-300 rounded text-xs font-bold" />
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <input 
-                                                      type="text" 
-                                                      value={row.subject} 
-                                                      onChange={(e) => handleUpdateEntry(row.id, 'subject', e.target.value)}
-                                                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all"
-                                                      placeholder="Subject"
-                                                    />
+                                                    <input type="text" value={row.subject} onChange={(e) => handleUpdateEntry(row.id, 'subject', e.target.value)} className="w-full px-2 py-1 bg-transparent border border-transparent hover:border-slate-300 rounded text-xs font-bold" />
                                                 </td>
-                                                <td className="px-2 py-2 text-right align-middle">
+                                                <td className="px-2 py-2 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <button
-                                                            onClick={() => moveTimetableRow(index, 'up')}
-                                                            disabled={index === 0}
-                                                            className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-30 transition-colors"
-                                                            title="Move Up"
-                                                        >
-                                                            <ArrowUp size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => moveTimetableRow(index, 'down')}
-                                                            disabled={index === timetable.length - 1}
-                                                            className="p-1.5 text-slate-300 hover:text-indigo-600 disabled:opacity-30 transition-colors"
-                                                            title="Move Down"
-                                                        >
-                                                            <ArrowDown size={16} />
-                                                        </button>
-                                                        <button 
-                                                          onClick={() => removeTimetableRow(row.id)} 
-                                                          className="text-slate-300 hover:text-rose-600 p-2 hover:bg-rose-50 rounded-lg transition-colors ml-1"
-                                                          title="Remove Row"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        <button onClick={() => moveTimetableRow(index, 'up')} disabled={index === 0} className="p-1 text-slate-300 hover:text-indigo-600 disabled:opacity-30"><ArrowUp size={14}/></button>
+                                                        <button onClick={() => moveTimetableRow(index, 'down')} disabled={index === timetable.length - 1} className="p-1 text-slate-300 hover:text-indigo-600 disabled:opacity-30"><ArrowDown size={14}/></button>
                                                     </div>
+                                                </td>
+                                                <td className="px-2 py-2 text-right">
+                                                    <button onClick={() => removeTimetableRow(row.id)} className="text-slate-300 hover:text-rose-600"><Trash2 size={16} /></button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -398,10 +374,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-slate-100 flex justify-end">
-                            <button 
-                              onClick={handleSave}
-                              className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
-                            >
+                            <button onClick={handleSave} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
                                 <Check size={18} /> {activeView === 'edit' ? 'Save Changes' : 'Publish Exam'}
                             </button>
                         </div>
@@ -427,12 +400,14 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                     <th className="px-6 py-4 uppercase text-[10px] tracking-wider">Full Timetable</th>
                                     <th className="px-6 py-4 text-center w-[120px] uppercase text-[10px] tracking-wider">Start Date</th>
                                     <th className="px-6 py-4 text-right w-[180px] uppercase text-[10px] tracking-wider">Published For</th>
-                                    <th className="px-6 py-4 w-[100px] uppercase text-[10px] tracking-wider">Actions</th>
+                                    <th className="px-6 py-4 w-[100px] uppercase text-[10px] tracking-wider text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {groupedExams.map((group, index) => {
                                     const { exam, classNames, allIds } = group;
+                                    const tt = Array.isArray(exam.timetable) ? exam.timetable : [];
+                                    
                                     return (
                                         <tr key={index} className="hover:bg-slate-50/50 align-top transition-colors">
                                             <td className="px-6 py-4">
@@ -440,21 +415,18 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                                 <div className="text-indigo-600 text-[10px] font-black uppercase mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded-md border border-indigo-100">{exam.type}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {exam.timetable && exam.timetable.length > 0 ? (
+                                                {tt.length > 0 ? (
                                                     <div className="border border-slate-200 rounded-xl overflow-hidden text-[11px] bg-white shadow-sm">
-                                                        <div className="grid grid-cols-2 bg-slate-50 p-2.5 font-bold text-slate-600 border-b border-slate-200 uppercase tracking-tighter text-[10px]">
-                                                            <div>Date</div>
-                                                            <div>Subject</div>
-                                                        </div>
-                                                        {exam.timetable.map(t => (
-                                                            <div key={t.id} className="grid grid-cols-2 p-2.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                                                                <div className="font-mono text-slate-500 font-bold">{t.date}</div>
-                                                                <div className="font-bold text-slate-800">{t.subject}</div>
+                                                        {tt.slice(0, 3).map(t => (
+                                                            <div key={t.id} className="grid grid-cols-2 p-1.5 border-b border-slate-100 last:border-0">
+                                                                <div className="font-mono text-slate-400">{t.date}</div>
+                                                                <div className="font-bold text-slate-700">{t.subject}</div>
                                                             </div>
                                                         ))}
+                                                        {tt.length > 3 && <div className="p-1 text-center bg-slate-50 text-[9px] font-bold text-slate-400">+{tt.length - 3} MORE SUBJECTS</div>}
                                                     </div>
                                                 ) : (
-                                                    <span className="text-slate-400 italic text-xs">No timetable entries</span>
+                                                    <span className="text-rose-500 font-bold text-[10px] uppercase bg-rose-50 px-2 py-1 rounded">No Timetable Uploaded</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-center font-mono text-slate-600 font-bold">
@@ -474,7 +446,7 @@ const ExamManager: React.FC<ExamManagerProps> = ({ exams, setExams }) => {
                                                     <button 
                                                       onClick={() => handleEditGroup(group)}
                                                       className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                      title="Edit Timetable"
+                                                      title="Edit Details"
                                                     >
                                                         <Edit2 size={18} />
                                                     </button>

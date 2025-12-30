@@ -13,7 +13,7 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sqlSchema = `-- INDRAYANI SCHOOL DATABASE SCHEMA
--- Run this in your Supabase SQL Editor to fix "Table not found" errors.
+-- Run this in your Supabase SQL Editor to fix "Table not found" or missing column errors.
 
 -- 1. Students Table
 CREATE TABLE IF NOT EXISTS students (
@@ -62,6 +62,13 @@ CREATE TABLE IF NOT EXISTS exams (
   "customSubjects" JSONB DEFAULT '[]'::jsonb,
   timetable JSONB DEFAULT '[]'::jsonb
 );
+
+-- Ensure timetable and other columns exist for users with old tables
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS timetable JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customMaxMarks" JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customEvaluationTypes" JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "activeSubjectIds" TEXT[];
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customSubjects" JSONB DEFAULT '[]'::jsonb;
 
 -- 5. Results Table
 CREATE TABLE IF NOT EXISTS results (
@@ -189,7 +196,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight">Cloud Database Setup</h3>
-                    <p className="text-xs text-slate-400 font-medium">Fix "Table Not Found" errors in Supabase</p>
+                    <p className="text-xs text-slate-400 font-medium">Fix "Table Not Found" or missing columns in Supabase</p>
                 </div>
             </div>
             <button 
@@ -203,7 +210,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
         {showSql && (
             <div className="space-y-4 animate-in zoom-in-95 duration-200 mt-4">
                 <p className="text-xs text-slate-300 leading-relaxed bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-                    Your Supabase project is currently empty. To fix the fetch errors, you must create the tables. 
+                    Your Supabase project needs to have the correct structure. If you previously ran this script, run it again to add new columns (like Timetables) to your database.
                     Copy the code below, go to your <strong>Supabase Dashboard {" > "} SQL Editor</strong>, and run it.
                 </p>
                 <div className="relative">

@@ -15,7 +15,7 @@ import StudentDashboard from './components/StudentDashboard';
 import StudentManager from './components/StudentManager';
 import SystemManager from './components/SystemManager';
 import { dbService } from './services/db';
-import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2, Database, Wifi, WifiOff } from 'lucide-react';
+import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -51,75 +51,71 @@ const App: React.FC = () => {
       setIsSyncing(true);
       await dbService.putAll(store, data);
       setIsSyncing(false);
-    }, 2000);
+    }, 500);
   }, []);
+
+  const handleSync = useCallback(async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const fetchResults = await Promise.allSettled([
+        dbService.getAll('students'),
+        dbService.getAll('attendance'),
+        dbService.getAll('exams'),
+        dbService.getAll('results'),
+        dbService.getAll('annualRecords'),
+        dbService.getAll('customFields'),
+        dbService.getAll('holidays'),
+        dbService.getAll('users'),
+        dbService.getAll('fees'),
+        dbService.getAll('homework'),
+        dbService.getAll('announcements')
+      ]);
+
+      const getVal = (idx: number, fallback: any[] = []) => 
+        fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
+
+      setStudents(getVal(0));
+      setAttendance(getVal(1));
+      setExams(getVal(2));
+      setResults(getVal(3));
+      setAnnualRecords(getVal(4));
+      setCustomFieldDefs(getVal(5));
+      setHolidays(getVal(6));
+      setUsers(prev => {
+        const fetchedUsers = getVal(7);
+        if (!fetchedUsers.some((u: any) => u.role === 'headmaster')) {
+           return [...fetchedUsers, prev.find(u => u.role === 'headmaster')].filter(Boolean) as User[];
+        }
+        return fetchedUsers;
+      });
+      setFees(getVal(8));
+      setHomework(getVal(9));
+      setAnnouncements(getVal(10));
+    } catch (err) {
+      console.error("Sync Error:", err);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [isSyncing]);
 
   useEffect(() => {
-    const hydrate = async () => {
-      try {
-        const fetchResults = await Promise.allSettled([
-          dbService.getAll('students'),
-          dbService.getAll('attendance'),
-          dbService.getAll('exams'),
-          dbService.getAll('results'),
-          dbService.getAll('annualRecords'),
-          dbService.getAll('customFields'),
-          dbService.getAll('holidays'),
-          dbService.getAll('users'),
-          dbService.getAll('fees'),
-          dbService.getAll('homework'),
-          dbService.getAll('announcements')
-        ]);
-
-        const getVal = (idx: number, fallback: any[] = []) => 
-          fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
-
-        const s = getVal(0);
-        const a = getVal(1);
-        const e = getVal(2);
-        const r = getVal(3);
-        const ar = getVal(4);
-        const cf = getVal(5);
-        const h = getVal(6);
-        const u = getVal(7);
-        const f = getVal(8);
-        const hw = getVal(9);
-        const ann = getVal(10);
-
-        let finalUsers = [...u];
-
-        if (!finalUsers.some(user => user.role === 'headmaster')) {
-          const adminUser: User = { 
-            id: '00000000-0000-4000-a000-000000000000', // Fixed valid UUID
-            username: 'admin', 
-            password: 'admin123', 
-            name: 'Administrator', 
-            role: 'headmaster' 
-          };
-          finalUsers.push(adminUser);
-          // Try to sync initial admin to Supabase immediately
-          dbService.put('users', adminUser).catch(() => {});
-        }
-
-        setStudents(s);
-        setUsers(finalUsers);
-        setAttendance(a);
-        setExams(e);
-        setResults(r);
-        setAnnualRecords(ar);
-        setCustomFieldDefs(cf);
-        setHolidays(h);
-        setFees(f);
-        setHomework(hw);
-        setAnnouncements(ann);
-      } catch (err) {
-        console.error("Hydration Critical Error:", err);
-      } finally {
-        setIsLoaded(true);
-      }
+    const init = async () => {
+      await handleSync();
+      setIsLoaded(true);
     };
-    hydrate();
-  }, []);
+    init();
+  }, []); // Only on mount
+
+  // Cross-device sync trigger: Re-sync when window is focused
+  useEffect(() => {
+    const onFocus = () => {
+        console.log("App focused - refreshing data from cloud...");
+        handleSync();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [handleSync]);
 
   useEffect(() => { if (isLoaded) scheduleSave('students', students); }, [students, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('attendance', attendance); }, [attendance, isLoaded, scheduleSave]);
@@ -148,7 +144,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Indrayani_School_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `Indrayani_Backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -172,10 +168,8 @@ const App: React.FC = () => {
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
-        <div className="relative">
-          <Loader2 size={64} className="text-indigo-600 animate-spin" />
-        </div>
-        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Indrayani Cloud Syncing...</p>
+        <Loader2 size={64} className="text-indigo-600 animate-spin" />
+        <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing school records...</p>
       </div>
     );
   }
@@ -189,7 +183,7 @@ const App: React.FC = () => {
   }[currentUser.role];
 
   if (currentUser.role === 'student') {
-    return <StudentDashboard currentUser={currentUser} onLogout={() => setCurrentUser(null)} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} />;
+    return <StudentDashboard currentUser={currentUser} onLogout={() => setCurrentUser(null)} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} onRefresh={handleSync} isSyncing={isSyncing} />;
   }
 
   const dashboardItems = [
@@ -257,12 +251,20 @@ const App: React.FC = () => {
                     <h1 className="text-base sm:text-xl font-black tracking-tight text-slate-900 uppercase italic leading-none">Indrayani School</h1>
                     <div className="flex items-center gap-2 mt-0.5">
                        {activeTab !== 'home' && <p className={`text-[10px] font-black ${theme.text} uppercase tracking-widest`}>{activeTab}</p>}
-                       {isSyncing && <div className="flex items-center gap-1 text-[8px] font-black text-indigo-500 animate-pulse"><Wifi size={10}/> SYNCING</div>}
+                       {isSyncing && <div className="flex items-center gap-1 text-[8px] font-black text-indigo-500 animate-pulse uppercase"><RefreshCw size={10} className="animate-spin"/> Synchronizing...</div>}
                     </div>
                   </div>
                </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
+               <button 
+                  onClick={handleSync} 
+                  disabled={isSyncing}
+                  className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl active:scale-95 transition-all hidden sm:flex"
+                  title="Force Cloud Sync"
+               >
+                  <RefreshCw size={20} className={isSyncing ? 'animate-spin text-indigo-600' : ''} />
+               </button>
                <div className="hidden xs:flex items-center gap-3 bg-white/60 py-1.5 px-3 rounded-2xl border border-white/50 shadow-sm">
                   <div className={`w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-sm font-black`}>{currentUser.name.charAt(0)}</div>
                   <div className="flex flex-col"><span className="text-xs font-black text-slate-800">{currentUser.name}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{currentUser.role}</span></div>
