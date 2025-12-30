@@ -84,7 +84,6 @@ const App: React.FC = () => {
       setHolidays(getVal(6));
       setUsers(prev => {
         const fetchedUsers = getVal(7);
-        // Ensure default admin ID is a valid UUID for Supabase compatibility
         const admin = prev.find(u => u.role === 'headmaster') || { id: '00000000-0000-4000-a000-000000000000', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
         if (!fetchedUsers.some((u: any) => u.role === 'headmaster')) {
            return [...fetchedUsers, admin] as User[];
@@ -222,9 +221,9 @@ const App: React.FC = () => {
           </div>
         );
       case 'students': return <StudentManager students={students} setStudents={setStudents} customFieldDefs={customFieldDefs} setCustomFieldDefs={setCustomFieldDefs} users={users} setUsers={setUsers} currentUser={currentUser} />;
-      case 'attendance': return <AttendanceTracker students={students} attendance={attendance} setAttendance={setAttendance} selectedClass={selectedClass ? selectedClass.split('|')[0] : ''} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} holidays={holidays} setHolidays={setHolidays} currentUser={currentUser} />;
+      case 'attendance': return <AttendanceTracker students={students} attendance={attendance} setAttendance={setAttendance} selectedClass={selectedClass ? selectedClass.split('|')[0] : ''} setSelectedClass={(cls) => setSelectedClass(cls)} holidays={holidays} setHolidays={setHolidays} currentUser={currentUser} />;
       case 'exams': return <ExamManager exams={exams} setExams={setExams} />;
-      case 'results': return <ResultsManager students={students} results={results} setResults={setResults} attendance={attendance} selectedClass={selectedClass.split('|')[0]} setSelectedClass={(cls) => setSelectedClass(cls ? `${cls}|English` : '')} exams={exams} setExams={setExams} />;
+      case 'results': return <ResultsManager students={students} results={results} setResults={setResults} attendance={attendance} selectedClass={selectedClass.split('|')[0]} setSelectedClass={(cls) => setSelectedClass(cls)} exams={exams} setExams={setExams} />;
       case 'annual': return <AnnualResultsManager students={students} annualRecords={annualRecords} setAnnualRecords={setAnnualRecords} selectedClass={selectedClass} setSelectedClass={setSelectedClass} exams={exams} customFieldDefs={customFieldDefs} />;
       case 'homework': return <HomeworkManager homework={homework} setHomework={setHomework} selectedClass={selectedClass} setSelectedClass={setSelectedClass} />;
       case 'notices': return <AnnouncementManager announcements={announcements} setAnnouncements={setAnnouncements} />;

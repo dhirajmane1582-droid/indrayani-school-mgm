@@ -205,6 +205,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     const user = users.find(u => u.linkedStudentId === student.id);
     setFormData({ 
         ...student, 
+        medium: student.medium || 'English',
         customId: user?.username || '', 
         customPass: user?.password || '' 
     });
@@ -305,17 +306,15 @@ const StudentManager: React.FC<StudentManagerProps> = ({
       try {
           const studentUser = users.find(u => u.linkedStudentId === student.id);
           
-          // First delete from cloud (to catch FK constraints early)
           if (studentUser) await dbService.delete('users', studentUser.id);
           await dbService.delete('students', student.id);
 
-          // If cloud succeeds, update local state
           setStudents(prev => prev.filter(s => s.id !== student.id));
           setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
           showToast("Student Removed Successfully", "info");
       } catch (err: any) {
           console.error("Delete Student Error:", err);
-          alert(`Error deleting student: ${err.message || 'Check database constraints'}. Make sure to update your SQL schema to enable ON DELETE CASCADE.`);
+          alert(`Error deleting student: ${err.message || 'Check database constraints'}.`);
       } finally {
           setIsSyncing(false);
       }
@@ -372,7 +371,6 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         ) : (
             filteredStudents.map(student => {
                 const studentUser = users.find(u => u.role === 'student' && u.linkedStudentId === student.id);
-                const studentCustomFields = customFieldDefs.filter(def => student.customFields?.[def.id]);
 
                 return (
                     <div key={student.id} className={`bg-white rounded-2xl border transition-all ${expandedStudentId === student.id ? 'border-indigo-600 ring-4 ring-indigo-100 shadow-xl' : 'border-slate-300 hover:border-indigo-400 shadow-sm'}`}>
@@ -382,10 +380,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 <h3 className="font-black text-slate-950 text-sm truncate uppercase">{student.name}</h3>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-[10px] font-black bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded uppercase border border-indigo-200">{student.className}</span>
-                                    {studentUser ? (
+                                    <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-0.5 rounded uppercase border border-slate-200">{student.medium || 'English'}</span>
+                                    {studentUser && (
                                         <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded uppercase border border-emerald-100 flex items-center gap-1"><Lock size={8}/> Access Active</span>
-                                    ) : (
-                                        <span className="text-[9px] font-black bg-rose-50 text-rose-500 px-2 py-0.5 rounded uppercase border border-rose-100">No Login</span>
                                     )}
                                 </div>
                             </div>
@@ -432,7 +429,6 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         )}
       </div>
 
-      {/* PORTALED ADMISSION MODAL */}
       {isModalOpen && createPortal(
         <div className="fixed inset-0 z-[200] flex flex-col pointer-events-none">
             <div className="absolute inset-0 top-[var(--header-height)] bg-slate-950/40 backdrop-blur-md pointer-events-auto" onClick={() => setIsModalOpen(false)}></div>
@@ -458,6 +454,13 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Standard</label>
                                     <select value={formData.className} onChange={(e) => handleInputChange('className', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-[#818cf8] transition-all shadow-sm cursor-pointer" required>
                                         {CLASSES.map(cls => <option key={cls.value} value={cls.value}>{cls.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Medium</label>
+                                    <select value={formData.medium} onChange={(e) => handleInputChange('medium', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-[#818cf8] transition-all shadow-sm cursor-pointer" required>
+                                        <option value="English">English</option>
+                                        <option value="Semi">Semi</option>
                                     </select>
                                 </div>
                                 <div className="col-span-1">
