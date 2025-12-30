@@ -15,10 +15,11 @@ import StudentDashboard from './components/StudentDashboard';
 import StudentManager from './components/StudentManager';
 import SystemManager from './components/SystemManager';
 import { dbService } from './services/db';
-import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2, Database } from 'lucide-react';
+import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2, Database, Wifi, WifiOff } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = sessionStorage.getItem('et_session');
     return saved ? JSON.parse(saved) : null;
@@ -40,7 +41,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabView>('home');
   const [selectedClass, setSelectedClass] = useState<string>('');
 
-  // Persistence Logic
+  // Persistence Logic - Debounced to 2 seconds for Supabase API efficiency
   const saveTimeoutRef = useRef<Record<string, number>>({});
   
   const scheduleSave = useCallback((store: string, data: any[]) => {
@@ -48,11 +49,13 @@ const App: React.FC = () => {
       window.clearTimeout(saveTimeoutRef.current[store]);
     }
     saveTimeoutRef.current[store] = window.setTimeout(async () => {
+      setIsSyncing(true);
       await dbService.putAll(store, data);
-    }, 1000);
+      setIsSyncing(false);
+    }, 2000);
   }, []);
 
-  // Hydration from DB
+  // Hydration from Supabase
   useEffect(() => {
     const hydrate = async () => {
       try {
@@ -73,30 +76,17 @@ const App: React.FC = () => {
         let finalStudents = [...s];
         let finalUsers = [...u];
 
-        if (finalStudents.length === 0) {
-          const sampleStudent: Student = {
-            id: 'sample-student-id',
-            name: 'John Doe',
-            rollNo: '101',
-            className: 'Class 1',
-            medium: 'English',
-            dob: '2015-05-20',
-            placeOfBirth: 'Mumbai',
-            address: '123 Main St, Koparkhairane, Navi Mumbai',
-            phone: '9876543210',
-            customFields: {}
-          };
-          finalStudents = [sampleStudent];
-        }
-
+        // Seed initial admin if missing in Supabase
         if (!finalUsers.some(user => user.role === 'headmaster')) {
-          finalUsers.push({ 
+          const adminUser: User = { 
             id: 'admin-primary', 
             username: 'admin', 
             password: 'admin123', 
             name: 'Administrator', 
             role: 'headmaster' 
-          });
+          };
+          finalUsers.push(adminUser);
+          await dbService.put('users', adminUser);
         }
 
         setStudents(finalStudents);
@@ -119,6 +109,7 @@ const App: React.FC = () => {
     hydrate();
   }, []);
 
+  // Sync state changes to DB
   useEffect(() => { if (isLoaded) scheduleSave('students', students); }, [students, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('attendance', attendance); }, [attendance, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('exams', exams); }, [exams, isLoaded, scheduleSave]);
@@ -161,18 +152,20 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportSystem = (data: any) => {
-    if (data.students) setStudents(data.students);
-    if (data.attendance) setAttendance(data.attendance);
-    if (data.exams) setExams(data.exams);
-    if (data.results) setResults(data.results);
-    if (data.annualRecords) setAnnualRecords(data.annualRecords);
-    if (data.customFieldDefs) setCustomFieldDefs(data.customFieldDefs);
-    if (data.holidays) setHolidays(data.holidays);
-    if (data.users) setUsers(data.users);
-    if (data.fees) setFees(data.fees);
-    if (data.homework) setHomework(data.homework);
-    if (data.announcements) setAnnouncements(data.announcements);
+  const handleImportSystem = async (data: any) => {
+    setIsSyncing(true);
+    if (data.students) { setStudents(data.students); await dbService.putAll('students', data.students); }
+    if (data.attendance) { setAttendance(data.attendance); await dbService.putAll('attendance', data.attendance); }
+    if (data.exams) { setExams(data.exams); await dbService.putAll('exams', data.exams); }
+    if (data.results) { setResults(data.results); await dbService.putAll('results', data.results); }
+    if (data.annualRecords) { setAnnualRecords(data.annualRecords); await dbService.putAll('annualRecords', data.annualRecords); }
+    if (data.customFieldDefs) { setCustomFieldDefs(data.customFieldDefs); await dbService.putAll('customFields', data.customFieldDefs); }
+    if (data.holidays) { setHolidays(data.holidays); await dbService.putAll('holidays', data.holidays); }
+    if (data.users) { setUsers(data.users); await dbService.putAll('users', data.users); }
+    if (data.fees) { setFees(data.fees); await dbService.putAll('fees', data.fees); }
+    if (data.homework) { setHomework(data.homework); await dbService.putAll('homework', data.homework); }
+    if (data.announcements) { setAnnouncements(data.announcements); await dbService.putAll('announcements', data.announcements); }
+    setIsSyncing(false);
   };
 
   if (!isLoaded) {
@@ -181,7 +174,7 @@ const App: React.FC = () => {
         <div className="relative">
           <Loader2 size={64} className="text-indigo-600 animate-spin" />
         </div>
-        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Indrayani System Initializing...</p>
+        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Indrayani Cloud Syncing...</p>
       </div>
     );
   }
@@ -253,7 +246,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
-      {/* Header Elevated to z-[100] */}
       <header className={`bg-gradient-to-b ${theme.gradient} backdrop-blur-md sticky top-0 z-[100] shadow-sm border-b ${theme.lightBg}`}>
          <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -262,7 +254,10 @@ const App: React.FC = () => {
                   <div className={`${theme.bg} p-2.5 rounded-xl shadow-lg ${theme.shadow} hidden xs:flex`}><theme.icon size={22} className="text-white" /></div>
                   <div>
                     <h1 className="text-base sm:text-xl font-black tracking-tight text-slate-900 uppercase italic leading-none">Indrayani School</h1>
-                    {activeTab !== 'home' && <p className={`text-[10px] font-black ${theme.text} uppercase tracking-widest mt-0.5`}>{activeTab}</p>}
+                    <div className="flex items-center gap-2 mt-0.5">
+                       {activeTab !== 'home' && <p className={`text-[10px] font-black ${theme.text} uppercase tracking-widest`}>{activeTab}</p>}
+                       {isSyncing && <div className="flex items-center gap-1 text-[8px] font-black text-indigo-500 animate-pulse"><Wifi size={10}/> SYNCING</div>}
+                    </div>
                   </div>
                </div>
             </div>
