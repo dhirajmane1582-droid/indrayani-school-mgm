@@ -5,7 +5,6 @@ import { supabase } from './supabase';
 const DB_NAME = 'IndrayaniSchoolDB';
 const DB_VERSION = 1;
 
-// Define tables to map internal store names to Supabase table names
 const TABLE_MAP: Record<string, string> = {
   'students': 'students',
   'attendance': 'attendance',
@@ -38,13 +37,18 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
 
     try {
-      // Try to fetch from Supabase
       const { data, error } = await supabase.from(tableName).select('*');
       
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('Could not find the table')) {
+          console.warn(`[SUPABASE SETUP REQUIRED] Table "${tableName}" does not exist yet. Please run the SQL schema in the Supabase Editor. Falling back to local storage for now.`);
+        } else {
+          console.error(`Supabase FETCH Error [${storeName}]:`, error.message);
+        }
+        throw error;
+      }
       
       if (data) {
-        // Sync local cache with remote data
         const tx = db.transaction(storeName, 'readwrite');
         await tx.store.clear();
         for (const item of data) {
@@ -54,34 +58,44 @@ export const dbService = {
         return data;
       }
     } catch (err) {
-      console.warn(`Supabase fetch failed for ${storeName}, falling back to local:`, err);
+      // Graceful fallback to IndexedDB
     }
 
-    // Fallback to local IndexedDB
     return db.getAll(storeName);
   },
 
   async put(storeName: string, item: any) {
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
+    const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
-    // Update local first for speed
+    // Always update local cache immediately for offline-first snappiness
     await db.put(storeName, item);
 
     // Sync to Supabase
     try {
-      const { error } = await supabase.from(tableName).upsert(item);
-      if (error) throw error;
+      const { error } = await supabase
+        .from(tableName)
+        .upsert(item, { onConflict: conflictColumn });
+      
+      if (error) {
+        if (!error.message.includes('Could not find the table')) {
+          console.error(`Supabase UPSERT Error [${storeName}]:`, error.message);
+        }
+      }
     } catch (err) {
-      console.error(`Supabase upsert failed for ${storeName}:`, err);
+      // Silently fail network operations to keep UI smooth
     }
   },
 
   async putAll(storeName: string, items: any[]) {
+    if (!items || items.length === 0) return;
+    
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
+    const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
-    // Update local
+    // Update local cache
     const tx = db.transaction(storeName, 'readwrite');
     await tx.store.clear();
     for (const item of items) {
@@ -89,47 +103,53 @@ export const dbService = {
     }
     await tx.done;
 
-    // Sync to Supabase in chunks or all at once
+    // Sync to Supabase
     try {
-      if (items.length > 0) {
-        // First delete everything in remote if doing a full sync, or just upsert
-        // For standard operations, upsert is safer. 
-        // If the collection is "the source of truth" (like promotion), we do a delete+insert.
-        const { error } = await supabase.from(tableName).upsert(items);
-        if (error) throw error;
+      const { error } = await supabase
+        .from(tableName)
+        .upsert(items, { onConflict: conflictColumn });
+        
+      if (error) {
+        if (!error.message.includes('Could not find the table')) {
+          console.error(`Supabase BATCH UPSERT Error [${storeName}]:`, error.message);
+        }
       }
     } catch (err) {
-      console.error(`Supabase batch upsert failed for ${storeName}:`, err);
+      // Silently fail network operations
     }
   },
 
   async delete(storeName: string, id: string) {
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
+    const idField = storeName === 'annualRecords' ? 'studentId' : 'id';
 
     await db.delete(storeName, id);
 
     try {
-      const idField = storeName === 'annualRecords' ? 'studentId' : 'id';
       const { error } = await supabase.from(tableName).delete().eq(idField, id);
-      if (error) throw error;
+      if (error && !error.message.includes('Could not find the table')) {
+        console.error(`Supabase DELETE Error [${storeName}]:`, error.message);
+      }
     } catch (err) {
-      console.error(`Supabase delete failed for ${storeName}:`, err);
+      // Silently fail network operations
     }
   },
 
   async clear(storeName: string) {
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
+    const idField = storeName === 'annualRecords' ? 'studentId' : 'id';
 
     await db.clear(storeName);
 
     try {
-      // Be careful with delete all in Supabase (usually requires filters or is restricted)
-      const { error } = await supabase.from(tableName).delete().neq('id', 'placeholder_safety_id');
-      if (error) throw error;
+      const { error } = await supabase.from(tableName).delete().neq(idField, 'placeholder_safety_id');
+      if (error && !error.message.includes('Could not find the table')) {
+        console.error(`Supabase CLEAR Error [${storeName}]:`, error.message);
+      }
     } catch (err) {
-      console.error(`Supabase clear failed for ${storeName}:`, err);
+      // Silently fail network operations
     }
   }
 };

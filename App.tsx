@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabView>('home');
   const [selectedClass, setSelectedClass] = useState<string>('');
 
-  // Persistence Logic - Debounced to 2 seconds for Supabase API efficiency
   const saveTimeoutRef = useRef<Record<string, number>>({});
   
   const scheduleSave = useCallback((store: string, data: any[]) => {
@@ -55,11 +54,10 @@ const App: React.FC = () => {
     }, 2000);
   }, []);
 
-  // Hydration from Supabase
   useEffect(() => {
     const hydrate = async () => {
       try {
-        const [s, a, e, r, ar, cf, h, u, f, hw, ann] = await Promise.all([
+        const fetchResults = await Promise.allSettled([
           dbService.getAll('students'),
           dbService.getAll('attendance'),
           dbService.getAll('exams'),
@@ -73,10 +71,23 @@ const App: React.FC = () => {
           dbService.getAll('announcements')
         ]);
 
-        let finalStudents = [...s];
+        const getVal = (idx: number, fallback: any[] = []) => 
+          fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
+
+        const s = getVal(0);
+        const a = getVal(1);
+        const e = getVal(2);
+        const r = getVal(3);
+        const ar = getVal(4);
+        const cf = getVal(5);
+        const h = getVal(6);
+        const u = getVal(7);
+        const f = getVal(8);
+        const hw = getVal(9);
+        const ann = getVal(10);
+
         let finalUsers = [...u];
 
-        // Seed initial admin if missing in Supabase
         if (!finalUsers.some(user => user.role === 'headmaster')) {
           const adminUser: User = { 
             id: 'admin-primary', 
@@ -86,10 +97,11 @@ const App: React.FC = () => {
             role: 'headmaster' 
           };
           finalUsers.push(adminUser);
-          await dbService.put('users', adminUser);
+          // Try to sync initial admin to Supabase immediately
+          dbService.put('users', adminUser).catch(() => {});
         }
 
-        setStudents(finalStudents);
+        setStudents(s);
         setUsers(finalUsers);
         setAttendance(a);
         setExams(e);
@@ -101,7 +113,7 @@ const App: React.FC = () => {
         setHomework(hw);
         setAnnouncements(ann);
       } catch (err) {
-        console.error("Hydration Error:", err);
+        console.error("Hydration Critical Error:", err);
       } finally {
         setIsLoaded(true);
       }
@@ -109,7 +121,6 @@ const App: React.FC = () => {
     hydrate();
   }, []);
 
-  // Sync state changes to DB
   useEffect(() => { if (isLoaded) scheduleSave('students', students); }, [students, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('attendance', attendance); }, [attendance, isLoaded, scheduleSave]);
   useEffect(() => { if (isLoaded) scheduleSave('exams', exams); }, [exams, isLoaded, scheduleSave]);
@@ -131,17 +142,7 @@ const App: React.FC = () => {
     const data = {
       version: '1.0',
       timestamp: new Date().toISOString(),
-      students,
-      attendance,
-      exams,
-      results,
-      annualRecords,
-      customFieldDefs,
-      holidays,
-      users,
-      fees,
-      homework,
-      announcements
+      students, attendance, exams, results, annualRecords, customFieldDefs, holidays, users, fees, homework, announcements
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
