@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database, Loader2, Cloud } from 'lucide-react';
 
 interface LoginProps {
   users: User[];
@@ -13,12 +13,19 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isUpdating, setIsUpdating] = useState(true);
+
+  // Show the loader for a brief moment to signify cloud check
+  useEffect(() => {
+      const timer = setTimeout(() => setIsUpdating(false), 800);
+      return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
     
     if (user) {
       if (user.role === activeRole) {
@@ -75,11 +82,18 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
             <h1 className="text-2xl font-black text-slate-900 mb-1">
                 Indrayani School
             </h1>
-            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">
-                {activeRole === 'student' && 'Student Portal'}
-                {activeRole === 'teacher' && 'Staff Login'}
-                {activeRole === 'headmaster' && 'Headmaster Login'}
-            </p>
+            <div className="flex items-center justify-center gap-2">
+                <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">
+                    {activeRole === 'student' && 'Student Portal'}
+                    {activeRole === 'teacher' && 'Staff Login'}
+                    {activeRole === 'headmaster' && 'Headmaster Login'}
+                </p>
+                {isUpdating && (
+                    <div className="flex items-center gap-1 text-[10px] text-indigo-500 font-bold animate-pulse">
+                        <Cloud size={12}/> Updating...
+                    </div>
+                )}
+            </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,7 +106,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all font-medium text-slate-800 outline-none"
-                    placeholder="Enter your username"
+                    placeholder="Enter your ID"
                     required
                 />
                 </div>
@@ -107,7 +121,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all font-medium text-slate-800 outline-none"
-                    placeholder="Enter your password"
+                    placeholder="Enter password"
                     required
                 />
                 </div>
@@ -121,36 +135,17 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
 
             <button
                 type="submit"
-                className={`w-full text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition-all transform active:scale-95 flex items-center justify-center gap-2 shadow-lg 
+                disabled={isUpdating}
+                className={`w-full text-white font-bold py-3.5 rounded-xl hover:opacity-90 transition-all transform active:scale-95 flex items-center justify-center gap-2 shadow-lg disabled:opacity-50
                     ${activeRole === 'student' ? 'bg-emerald-600 shadow-emerald-200' : ''}
                     ${activeRole === 'teacher' ? 'bg-indigo-600 shadow-indigo-200' : ''}
                     ${activeRole === 'headmaster' ? 'bg-purple-600 shadow-purple-200' : ''}
                 `}
             >
-                <LogIn size={20} />
-                Secure Login
+                {isUpdating ? <Loader2 size={20} className="animate-spin"/> : <LogIn size={20} />}
+                {isUpdating ? 'Connecting...' : 'Secure Login'}
             </button>
             </form>
-
-            <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
-                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-3">
-                    <Database size={18} className="text-indigo-500 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-[10px] text-indigo-700 font-black uppercase leading-relaxed tracking-wider mb-1">
-                        Device Portability Note
-                      </p>
-                      <p className="text-[10px] text-indigo-600 font-medium leading-relaxed">
-                        Data is stored locally in this browser. To log in on a different device, your Headmaster must transfer the database via the "System" module.
-                      </p>
-                    </div>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-                    <Info size={16} className="text-slate-400 mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-wider">
-                        Please use the credentials provided by the school administration office to access your account.
-                    </p>
-                </div>
-            </div>
 
             <div className="mt-8 text-center text-[10px] text-slate-300 font-black tracking-widest uppercase">
             © 2025 Indrayani School • Private System

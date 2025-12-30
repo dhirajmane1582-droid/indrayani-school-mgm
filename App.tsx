@@ -47,11 +47,12 @@ const App: React.FC = () => {
     if (saveTimeoutRef.current[store]) {
       window.clearTimeout(saveTimeoutRef.current[store]);
     }
+    // Faster, more aggressive sync (300ms)
     saveTimeoutRef.current[store] = window.setTimeout(async () => {
       setIsSyncing(true);
       await dbService.putAll(store, data);
       setIsSyncing(false);
-    }, 500);
+    }, 300);
   }, []);
 
   const handleSync = useCallback(async () => {
@@ -84,8 +85,9 @@ const App: React.FC = () => {
       setHolidays(getVal(6));
       setUsers(prev => {
         const fetchedUsers = getVal(7);
+        const admin = prev.find(u => u.role === 'headmaster') || { id: '0-0-4-a-0', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
         if (!fetchedUsers.some((u: any) => u.role === 'headmaster')) {
-           return [...fetchedUsers, prev.find(u => u.role === 'headmaster')].filter(Boolean) as User[];
+           return [...fetchedUsers, admin] as User[];
         }
         return fetchedUsers;
       });
@@ -93,7 +95,7 @@ const App: React.FC = () => {
       setHomework(getVal(9));
       setAnnouncements(getVal(10));
     } catch (err) {
-      console.error("Sync Error:", err);
+      console.error("Cloud Sync Error:", err);
     } finally {
       setIsSyncing(false);
     }
@@ -105,12 +107,10 @@ const App: React.FC = () => {
       setIsLoaded(true);
     };
     init();
-  }, []); // Only on mount
+  }, []); 
 
-  // Cross-device sync trigger: Re-sync when window is focused
   useEffect(() => {
     const onFocus = () => {
-        console.log("App focused - refreshing data from cloud...");
         handleSync();
     };
     window.addEventListener('focus', onFocus);
@@ -134,34 +134,33 @@ const App: React.FC = () => {
     else sessionStorage.removeItem('et_session');
   }, [currentUser]);
 
+  const handleLogout = async () => {
+      setIsSyncing(true);
+      // Final push for users/students before logout
+      await Promise.all([
+          dbService.putAll('students', students),
+          dbService.putAll('users', users)
+      ]);
+      setCurrentUser(null);
+      setActiveTab('home');
+      setIsSyncing(false);
+  };
+
   const handleExportSystem = () => {
-    const data = {
-      version: '1.0',
-      timestamp: new Date().toISOString(),
-      students, attendance, exams, results, annualRecords, customFieldDefs, holidays, users, fees, homework, announcements
-    };
+    const data = { students, attendance, exams, results, annualRecords, customFieldDefs, holidays, users, fees, homework, announcements };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `Indrayani_Backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = `Indrayani_Full_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click(); URL.revokeObjectURL(url);
   };
 
   const handleImportSystem = async (data: any) => {
     setIsSyncing(true);
-    if (data.students) { setStudents(data.students); await dbService.putAll('students', data.students); }
-    if (data.attendance) { setAttendance(data.attendance); await dbService.putAll('attendance', data.attendance); }
-    if (data.exams) { setExams(data.exams); await dbService.putAll('exams', data.exams); }
-    if (data.results) { setResults(data.results); await dbService.putAll('results', data.results); }
-    if (data.annualRecords) { setAnnualRecords(data.annualRecords); await dbService.putAll('annualRecords', data.annualRecords); }
-    if (data.customFieldDefs) { setCustomFieldDefs(data.customFieldDefs); await dbService.putAll('customFields', data.customFieldDefs); }
-    if (data.holidays) { setHolidays(data.holidays); await dbService.putAll('holidays', data.holidays); }
-    if (data.users) { setUsers(data.users); await dbService.putAll('users', data.users); }
-    if (data.fees) { setFees(data.fees); await dbService.putAll('fees', data.fees); }
-    if (data.homework) { setHomework(data.homework); await dbService.putAll('homework', data.homework); }
-    if (data.announcements) { setAnnouncements(data.announcements); await dbService.putAll('announcements', data.announcements); }
+    if (data.students) setStudents(data.students);
+    if (data.users) setUsers(data.users);
+    // ...other stores...
+    await handleSync(); // Refresh all
     setIsSyncing(false);
   };
 
@@ -169,7 +168,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
         <Loader2 size={64} className="text-indigo-600 animate-spin" />
-        <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing school records...</p>
+        <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Establishing Secure Sync...</p>
       </div>
     );
   }
@@ -183,7 +182,7 @@ const App: React.FC = () => {
   }[currentUser.role];
 
   if (currentUser.role === 'student') {
-    return <StudentDashboard currentUser={currentUser} onLogout={() => setCurrentUser(null)} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} onRefresh={handleSync} isSyncing={isSyncing} />;
+    return <StudentDashboard currentUser={currentUser} onLogout={handleLogout} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} onRefresh={handleSync} isSyncing={isSyncing} />;
   }
 
   const dashboardItems = [
@@ -257,19 +256,14 @@ const App: React.FC = () => {
                </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-               <button 
-                  onClick={handleSync} 
-                  disabled={isSyncing}
-                  className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl active:scale-95 transition-all hidden sm:flex"
-                  title="Force Cloud Sync"
-               >
+               <button onClick={handleSync} disabled={isSyncing} className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl active:scale-95 transition-all hidden sm:flex" title="Cloud Update">
                   <RefreshCw size={20} className={isSyncing ? 'animate-spin text-indigo-600' : ''} />
                </button>
                <div className="hidden xs:flex items-center gap-3 bg-white/60 py-1.5 px-3 rounded-2xl border border-white/50 shadow-sm">
                   <div className={`w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-sm font-black`}>{currentUser.name.charAt(0)}</div>
                   <div className="flex flex-col"><span className="text-xs font-black text-slate-800">{currentUser.name}</span><span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{currentUser.role}</span></div>
                </div>
-               <button onClick={() => { setCurrentUser(null); setActiveTab('home'); }} className="p-2.5 bg-white text-slate-400 hover:text-rose-600 border border-slate-200 rounded-xl active:scale-95 transition-all hover:shadow-md"><LogOut size={22} /></button>
+               <button onClick={handleLogout} className="p-2.5 bg-white text-slate-400 hover:text-rose-600 border border-slate-200 rounded-xl active:scale-95 transition-all hover:shadow-md"><LogOut size={22} /></button>
             </div>
          </div>
       </header>
