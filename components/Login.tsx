@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database } from 'lucide-react';
 
 interface LoginProps {
   users: User[];
@@ -132,7 +132,18 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
             </button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="mt-8 pt-6 border-t border-slate-100 space-y-4">
+                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-3">
+                    <Database size={18} className="text-indigo-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-indigo-700 font-black uppercase leading-relaxed tracking-wider mb-1">
+                        Device Portability Note
+                      </p>
+                      <p className="text-[10px] text-indigo-600 font-medium leading-relaxed">
+                        Data is stored locally in this browser. To log in on a different device, your Headmaster must transfer the database via the "System" module.
+                      </p>
+                    </div>
+                </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
                     <Info size={16} className="text-slate-400 mt-0.5 shrink-0" />
                     <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed tracking-wider">

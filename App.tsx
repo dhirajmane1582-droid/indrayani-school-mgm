@@ -13,8 +13,9 @@ import AnnouncementManager from './components/AnnouncementManager';
 import ExamManager from './components/ExamManager';
 import StudentDashboard from './components/StudentDashboard';
 import StudentManager from './components/StudentManager';
+import SystemManager from './components/SystemManager';
 import { dbService } from './services/db';
-import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2 } from 'lucide-react';
+import { CalendarCheck, GraduationCap, FileBadge, LogOut, IndianRupee, Shield, BookOpen, Bell, Layers, Home, ChevronRight, Menu, X, User as UserIcon, TrendingUp, Loader2, Database } from 'lucide-react';
 
 const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -135,6 +136,45 @@ const App: React.FC = () => {
     else sessionStorage.removeItem('et_session');
   }, [currentUser]);
 
+  const handleExportSystem = () => {
+    const data = {
+      version: '1.0',
+      timestamp: new Date().toISOString(),
+      students,
+      attendance,
+      exams,
+      results,
+      annualRecords,
+      customFieldDefs,
+      holidays,
+      users,
+      fees,
+      homework,
+      announcements
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Indrayani_School_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportSystem = (data: any) => {
+    if (data.students) setStudents(data.students);
+    if (data.attendance) setAttendance(data.attendance);
+    if (data.exams) setExams(data.exams);
+    if (data.results) setResults(data.results);
+    if (data.annualRecords) setAnnualRecords(data.annualRecords);
+    if (data.customFieldDefs) setCustomFieldDefs(data.customFieldDefs);
+    if (data.holidays) setHolidays(data.holidays);
+    if (data.users) setUsers(data.users);
+    if (data.fees) setFees(data.fees);
+    if (data.homework) setHomework(data.homework);
+    if (data.announcements) setAnnouncements(data.announcements);
+  };
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
@@ -172,6 +212,7 @@ const App: React.FC = () => {
   if (currentUser.role === 'headmaster') {
     dashboardItems.push({ id: 'users', label: 'Users', desc: 'Manage Access', icon: Shield, color: 'bg-slate-600' });
     dashboardItems.push({ id: 'promotion', label: 'Promotion', desc: 'Student Progression', icon: TrendingUp, color: 'bg-violet-600' });
+    dashboardItems.push({ id: 'system', label: 'System', desc: 'Database & Sync', icon: Database, color: 'bg-indigo-700' });
   }
 
   const renderContent = () => {
@@ -205,6 +246,7 @@ const App: React.FC = () => {
       case 'fees': return <FeeManager students={students} fees={fees} setFees={setFees} readOnly={currentUser.role === 'teacher'} />;
       case 'users': return <UserManagement users={users} setUsers={setUsers} currentUser={currentUser} students={students} />;
       case 'promotion': return <PromotionManager students={students} setStudents={setStudents} />;
+      case 'system': return <SystemManager onExport={handleExportSystem} onImport={handleImportSystem} />;
       default: return null;
     }
   };

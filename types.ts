@@ -107,7 +107,7 @@ export interface Announcement {
   targetClass?: string;
 }
 
-export type TabView = 'home' | 'students' | 'attendance' | 'exams' | 'results' | 'annual' | 'fees' | 'users' | 'promotion' | 'homework' | 'notices';
+export type TabView = 'home' | 'students' | 'attendance' | 'exams' | 'results' | 'annual' | 'fees' | 'users' | 'promotion' | 'homework' | 'notices' | 'system';
 
 export type UserRole = 'teacher' | 'headmaster' | 'student';
 
