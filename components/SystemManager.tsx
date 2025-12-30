@@ -204,7 +204,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
             <div className="space-y-4 animate-in zoom-in-95 duration-200 mt-4">
                 <p className="text-xs text-slate-300 leading-relaxed bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
                     Your Supabase project is currently empty. To fix the fetch errors, you must create the tables. 
-                    Copy the code below, go to your <strong>Supabase Dashboard > SQL Editor</strong>, and run it.
+                    Copy the code below, go to your <strong>Supabase Dashboard {" > "} SQL Editor</strong>, and run it.
                 </p>
                 <div className="relative">
                     <pre className="bg-black/50 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[300px] text-emerald-400 border border-white/5">

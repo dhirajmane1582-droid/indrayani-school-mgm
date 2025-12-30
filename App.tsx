@@ -90,7 +90,7 @@ const App: React.FC = () => {
 
         if (!finalUsers.some(user => user.role === 'headmaster')) {
           const adminUser: User = { 
-            id: 'admin-primary', 
+            id: '00000000-0000-4000-a000-000000000000', // Fixed valid UUID
             username: 'admin', 
             password: 'admin123', 
             name: 'Administrator', 

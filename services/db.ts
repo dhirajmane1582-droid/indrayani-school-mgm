@@ -144,7 +144,8 @@ export const dbService = {
     await db.clear(storeName);
 
     try {
-      const { error } = await supabase.from(tableName).delete().neq(idField, 'placeholder_safety_id');
+      // Use a valid UUID format for the filter to avoid syntax errors
+      const { error } = await supabase.from(tableName).delete().neq(idField, '00000000-0000-4000-a000-ffffffffffff');
       if (error && !error.message.includes('Could not find the table')) {
         console.error(`Supabase CLEAR Error [${storeName}]:`, error.message);
       }
