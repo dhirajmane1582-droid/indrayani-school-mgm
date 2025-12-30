@@ -138,13 +138,6 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleCustomFieldChange = (fieldId: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      customFields: { ...(prev.customFields || {}), [fieldId]: value }
-    }));
-  };
-
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^[a-zA-Z ]+$/.test(formData.name || '')) {
@@ -307,13 +300,25 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const handleRemoveStudent = async (student: Student) => {
-    if (window.confirm(`Are you sure you want to remove ${student.name}?`)) {
-      await dbService.delete('students', student.id);
-      const studentUser = users.find(u => u.linkedStudentId === student.id);
-      if (studentUser) await dbService.delete('users', studentUser.id);
-      setStudents(prev => prev.filter(s => s.id !== student.id));
-      setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
-      showToast("Student Removed", "info");
+    if (window.confirm(`Are you sure you want to remove ${student.name}? This will delete their login and all academic data from all devices.`)) {
+      setIsSyncing(true);
+      try {
+          const studentUser = users.find(u => u.linkedStudentId === student.id);
+          
+          // First delete from cloud (to catch FK constraints early)
+          if (studentUser) await dbService.delete('users', studentUser.id);
+          await dbService.delete('students', student.id);
+
+          // If cloud succeeds, update local state
+          setStudents(prev => prev.filter(s => s.id !== student.id));
+          setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
+          showToast("Student Removed Successfully", "info");
+      } catch (err: any) {
+          console.error("Delete Student Error:", err);
+          alert(`Error deleting student: ${err.message || 'Check database constraints'}. Make sure to update your SQL schema to enable ON DELETE CASCADE.`);
+      } finally {
+          setIsSyncing(false);
+      }
     }
   };
 

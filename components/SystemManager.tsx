@@ -1,6 +1,6 @@
 
 import React, { useRef, useState } from 'react';
-import { Database, DownloadCloud, UploadCloud, AlertTriangle, CheckCircle2, ShieldAlert, FileJson, Terminal, Copy, ExternalLink } from 'lucide-react';
+import { Database, DownloadCloud, UploadCloud, AlertTriangle, CheckCircle2, ShieldAlert, FileJson, Terminal, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface SystemManagerProps {
   onExport: () => void;
@@ -13,7 +13,7 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sqlSchema = `-- INDRAYANI SCHOOL DATABASE SCHEMA
--- Run this in your Supabase SQL Editor to fix "Table not found" or missing column errors.
+-- Ensure tables use ON DELETE CASCADE for reliable cross-device deletion.
 
 -- 1. Students Table
 CREATE TABLE IF NOT EXISTS students (
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   name TEXT,
   role TEXT,
-  "linkedStudentId" UUID
+  "linkedStudentId" UUID REFERENCES students(id) ON DELETE CASCADE
 );
 
 -- 3. Attendance Table
@@ -62,13 +62,6 @@ CREATE TABLE IF NOT EXISTS exams (
   "customSubjects" JSONB DEFAULT '[]'::jsonb,
   timetable JSONB DEFAULT '[]'::jsonb
 );
-
--- Ensure timetable and other columns exist for users with old tables
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS timetable JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customMaxMarks" JSONB DEFAULT '{}'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customEvaluationTypes" JSONB DEFAULT '{}'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "activeSubjectIds" TEXT[];
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customSubjects" JSONB DEFAULT '[]'::jsonb;
 
 -- 5. Results Table
 CREATE TABLE IF NOT EXISTS results (
@@ -100,51 +93,21 @@ CREATE TABLE IF NOT EXISTS annual_records (
   published BOOLEAN DEFAULT false
 );
 
--- 7. Custom Field Definitions
-CREATE TABLE IF NOT EXISTS custom_field_defs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  label TEXT NOT NULL
-);
+-- Migration Helper (Updates columns if they are missing)
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS timetable JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customMaxMarks" JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customEvaluationTypes" JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "activeSubjectIds" TEXT[];
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customSubjects" JSONB DEFAULT '[]'::jsonb;
 
--- 8. Holidays Table
-CREATE TABLE IF NOT EXISTS holidays (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT NOT NULL,
-  "endDate" TEXT,
-  name TEXT
-);
+-- Other Tables
+CREATE TABLE IF NOT EXISTS custom_field_defs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), label TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS holidays (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT NOT NULL, "endDate" TEXT, name TEXT);
+CREATE TABLE IF NOT EXISTS fees (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "studentId" UUID REFERENCES students(id) ON DELETE CASCADE, amount NUMERIC, date TEXT, remarks TEXT);
+CREATE TABLE IF NOT EXISTS homework (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT, "dueDate" TEXT, "className" TEXT, medium TEXT, subject TEXT, title TEXT, description TEXT);
+CREATE TABLE IF NOT EXISTS announcements (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT, title TEXT, content TEXT, "targetClass" TEXT);
 
--- 9. Fees Table
-CREATE TABLE IF NOT EXISTS fees (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  amount NUMERIC,
-  date TEXT,
-  remarks TEXT
-);
-
--- 10. Homework Table
-CREATE TABLE IF NOT EXISTS homework (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT,
-  "dueDate" TEXT,
-  "className" TEXT,
-  medium TEXT,
-  subject TEXT,
-  title TEXT,
-  description TEXT
-);
-
--- 11. Announcements Table
-CREATE TABLE IF NOT EXISTS announcements (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT,
-  title TEXT,
-  content TEXT,
-  "targetClass" TEXT
-);
-
--- DISABLE RLS FOR TESTING (Enable proper RLS policies later for security)
+-- DISABLE RLS
 ALTER TABLE students DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
@@ -196,22 +159,21 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight">Cloud Database Setup</h3>
-                    <p className="text-xs text-slate-400 font-medium">Fix "Table Not Found" or missing columns in Supabase</p>
+                    <p className="text-xs text-slate-400 font-medium">Enable deletions & sync Timetables</p>
                 </div>
             </div>
             <button 
                 onClick={() => setShowSql(!showSql)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold uppercase transition-all"
             >
-                {showSql ? 'Hide SQL' : 'Show SQL'}
+                {showSql ? 'Hide SQL' : 'Show SQL Script'}
             </button>
         </div>
 
         {showSql && (
             <div className="space-y-4 animate-in zoom-in-95 duration-200 mt-4">
                 <p className="text-xs text-slate-300 leading-relaxed bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-                    Your Supabase project needs to have the correct structure. If you previously ran this script, run it again to add new columns (like Timetables) to your database.
-                    Copy the code below, go to your <strong>Supabase Dashboard {" > "} SQL Editor</strong>, and run it.
+                    <strong>Critical:</strong> If you are getting errors while deleting students, or if timetables aren't syncing, copy the code below and run it in your <strong>Supabase SQL Editor</strong>. It ensures "ON DELETE CASCADE" is enabled and all necessary columns (like Timetables) are present.
                 </p>
                 <div className="relative">
                     <pre className="bg-black/50 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[300px] text-emerald-400 border border-white/5">
@@ -232,7 +194,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
                         rel="noreferrer"
                         className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
                     >
-                        Open Supabase <ExternalLink size={14} />
+                        Open Supabase Console <ExternalLink size={14} />
                     </a>
                 </div>
             </div>
@@ -251,7 +213,6 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Export Section */}
           <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between group hover:border-indigo-300 transition-all">
             <div>
               <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform">
@@ -271,7 +232,6 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
             </button>
           </div>
 
-          {/* Import Section */}
           <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 flex flex-col justify-between group hover:border-rose-300 transition-all">
             <div>
               <div className="w-12 h-12 rounded-xl bg-white border border-rose-100 flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform">
@@ -307,15 +267,14 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
         )}
       </div>
 
-      {/* Security Disclaimer */}
       <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 flex gap-4">
         <AlertTriangle className="text-amber-600 shrink-0 mt-1" size={24} />
         <div>
-          <h4 className="font-bold text-amber-900 mb-1 uppercase text-xs tracking-wider">Crucial Security Information</h4>
+          <h4 className="font-bold text-amber-900 mb-1 uppercase text-xs tracking-wider">Deletions Not Syncing?</h4>
           <p className="text-xs text-amber-800 leading-relaxed font-medium">
-            This management system is <strong>fully offline-first</strong>. If Supabase setup is skipped, your data remains stored in this browser.
+            If you delete a student but they reappear after a refresh, it means your Supabase database is preventing the deletion due to "Foreign Key Constraints" (linked results or attendance). 
             <br/><br/>
-            To use multiple devices, you must either setup Supabase (recommended) or manually move the backup file. If you clear your browser's data/cache without Supabase setup, your school records may be lost.
+            <strong>Solution:</strong> Use the "Cloud Database Setup" above to update your schema. Ensure your SQL tables include <code>ON DELETE CASCADE</code> for all student references.
           </p>
         </div>
       </div>

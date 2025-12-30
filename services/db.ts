@@ -111,19 +111,28 @@ export const dbService = {
   },
 
   async delete(storeName: string, id: string) {
+    if (!id) return;
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
-    const idField = storeName === 'annualRecords' ? 'studentId' : 'id';
+    const idField = (storeName === 'annualRecords') ? 'studentId' : 'id';
 
-    await db.delete(storeName, id);
+    // Delete locally first
+    try {
+        await db.delete(storeName, id);
+    } catch (err) {
+        console.error(`Local DELETE error [${storeName}]:`, err);
+    }
 
+    // Attempt cloud delete
     try {
       const { error } = await supabase.from(tableName).delete().eq(idField, id);
       if (error) {
         console.error(`Supabase DELETE Error [${storeName}]:`, error.message);
+        throw error;
       }
     } catch (err) {
-      // Offline mode
+      console.warn(`Cloud deletion failed for ${storeName}/${id}. If you have foreign keys, ensure CASCADE is enabled in SQL.`);
+      throw err;
     }
   },
 
@@ -135,7 +144,6 @@ export const dbService = {
     await db.clear(storeName);
 
     try {
-      // Proper generic delete all for Supabase
       const { error } = await supabase.from(tableName).delete().not(idField, 'is', null);
       if (error) {
         console.error(`Supabase CLEAR Error [${storeName}]:`, error.message);

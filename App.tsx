@@ -47,7 +47,6 @@ const App: React.FC = () => {
     if (saveTimeoutRef.current[store]) {
       window.clearTimeout(saveTimeoutRef.current[store]);
     }
-    // Faster, more aggressive sync (300ms)
     saveTimeoutRef.current[store] = window.setTimeout(async () => {
       setIsSyncing(true);
       await dbService.putAll(store, data);
@@ -85,7 +84,8 @@ const App: React.FC = () => {
       setHolidays(getVal(6));
       setUsers(prev => {
         const fetchedUsers = getVal(7);
-        const admin = prev.find(u => u.role === 'headmaster') || { id: '0-0-4-a-0', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
+        // Ensure default admin ID is a valid UUID for Supabase compatibility
+        const admin = prev.find(u => u.role === 'headmaster') || { id: '00000000-0000-4000-a000-000000000000', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
         if (!fetchedUsers.some((u: any) => u.role === 'headmaster')) {
            return [...fetchedUsers, admin] as User[];
         }
@@ -136,7 +136,6 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
       setIsSyncing(true);
-      // Final push for users/students before logout
       await Promise.all([
           dbService.putAll('students', students),
           dbService.putAll('users', users)
@@ -159,8 +158,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     if (data.students) setStudents(data.students);
     if (data.users) setUsers(data.users);
-    // ...other stores...
-    await handleSync(); // Refresh all
+    await handleSync(); 
     setIsSyncing(false);
   };
 
