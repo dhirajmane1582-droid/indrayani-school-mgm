@@ -18,60 +18,70 @@ interface AnnualResultsManagerProps {
 
 const PDF_STYLES_BW = `
     @page { size: A4; margin: 0; }
-    .report-wrapper { background-color: #fff; padding: 0; margin: 0; width: 210mm; height: 297mm; box-sizing: border-box; }
-    .report-page { 
-        font-family: 'Inter', 'Arial', sans-serif; 
-        padding: 8mm; 
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+    .report-wrapper { 
+        background-color: #fff; 
+        padding: 0; 
+        margin: 0; 
         width: 210mm; 
         height: 297mm; 
-        box-sizing: border-box; 
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .report-page { 
+        font-family: 'Times New Roman', serif; 
+        padding: 8mm; 
+        width: 200mm; 
+        height: 287mm; 
         color: #000;
         background: #fff;
-        border: 4px double #000;
-        margin: 0 auto;
+        border: 3px double #000;
         display: flex;
         flex-direction: column;
-        position: relative;
+        line-height: 1.2;
+        font-size: 11px;
     }
-    .header-box { display: flex; align-items: center; justify-content: center; margin-bottom: 8px; border-bottom: 1.5px solid #000; padding-bottom: 8px; position: relative; }
-    .logo-placeholder { position: absolute; left: 0; width: 60px; height: 60px; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; text-align: center; }
+    .header-section { display: flex; align-items: center; margin-bottom: 10px; position: relative; }
+    .logo-box { width: 70px; height: 70px; margin-right: 15px; flex-shrink: 0; }
+    .logo-img { width: 100%; height: 100%; object-fit: contain; filter: grayscale(100%); }
     .header-text { text-align: center; flex: 1; }
-    .trust-name { font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
-    .school-name { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
-    .udise { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
-    .address { font-size: 9px; margin-bottom: 2px; font-weight: bold; text-transform: uppercase; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 0; }
-    .progress-card-title { font-size: 13px; font-weight: 900; margin-top: 8px; text-transform: uppercase; }
+    .trust-name { font-size: 14px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+    .school-name { font-size: 22px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+    .udise { font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+    .address { font-size: 10px; font-weight: bold; text-transform: uppercase; border-bottom: 1.5px solid #000; padding-bottom: 4px; }
+    .progress-card-title { font-size: 14px; font-weight: 900; margin-top: 8px; text-transform: uppercase; }
     
-    .student-details { margin-top: 10px; margin-bottom: 12px; font-size: 12px; line-height: 1.6; }
-    .detail-row { display: flex; margin-bottom: 2px; }
-    .detail-label { font-weight: bold; width: 160px; }
-    .detail-value { flex: 1; font-weight: bold; border-bottom: 1px dotted #000; }
+    .student-info-grid { margin-top: 15px; margin-bottom: 15px; display: grid; grid-template-columns: auto 1fr; gap: 8px 15px; }
+    .info-label { font-weight: bold; min-width: 140px; }
+    .info-value { font-weight: bold; border-bottom: 1px dotted #000; }
 
-    .section-title { font-weight: 900; text-align: center; font-size: 11px; text-transform: uppercase; margin: 8px 0 4px 0; text-decoration: underline; }
+    .section-head { font-weight: 900; text-align: center; font-size: 12px; text-transform: uppercase; margin: 10px 0 5px 0; text-decoration: underline; }
 
-    .tables-flex { display: flex; gap: 10px; width: 100%; margin-bottom: 12px; }
-    .semester-box { flex: 1; }
-    .table-header-sm { font-weight: bold; text-align: center; border: 1px solid #000; border-bottom: 0; padding: 2px; font-size: 10px; text-transform: uppercase; background: #eee; }
+    .grades-container { display: flex; gap: 15px; }
+    .semester-table-box { flex: 1; }
+    .sem-title { font-weight: bold; text-align: center; border: 1px solid #000; border-bottom: 0; padding: 3px; font-size: 11px; text-transform: uppercase; background: #eee; }
     
-    table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #000; }
-    th, td { border: 1px solid #000; padding: 4px 2px; text-align: center; color: #000; }
-    th { font-weight: bold; text-transform: uppercase; font-size: 10px; background: #f9f9f9; }
-    .sub-col { text-align: left; padding-left: 6px; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #000; padding: 4px 2px; text-align: center; }
+    th { font-weight: bold; text-transform: uppercase; font-size: 10px; }
+    .subject-name { text-align: left; padding-left: 8px; font-weight: bold; }
     
     .remarks-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-    .remarks-table th { font-size: 9px; padding: 2px; }
-    .remarks-table td { height: 45px; vertical-align: top; padding: 4px; font-size: 10px; text-align: left; }
+    .remarks-table th { font-size: 10px; padding: 4px; background: #eee; }
+    .remarks-table td { height: 50px; vertical-align: top; padding: 6px; font-size: 10px; text-align: left; }
 
-    .grade-key-container { margin-top: 10px; border: 1px solid #000; }
-    .grade-key-title { font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 2px 5px; border-bottom: 1px solid #000; background: #eee; }
-    .grade-key-row { display: flex; font-size: 9px; font-weight: bold; }
-    .key-item { flex: 1; border-right: 1px solid #000; text-align: center; padding: 2px; }
-    .key-item:last-child { border-right: 0; }
+    .grade-key-section { margin-top: 15px; border: 1px solid #000; }
+    .key-title { font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 3px 10px; border-bottom: 1px solid #000; background: #eee; }
+    .key-grid { display: grid; grid-template-columns: repeat(8, 1fr); text-align: center; font-size: 10px; font-weight: bold; }
+    .key-cell { border-right: 1px solid #000; padding: 4px 2px; }
+    .key-cell:last-child { border-right: 0; }
 
-    .footer-section { margin-top: auto; padding-top: 15px; text-align: center; font-size: 12px; }
-    .footer-line { font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
-    .sig-container { display: flex; justify-content: space-between; margin-top: 30px; padding: 0 10px; }
-    .sig-box { border-top: 1.5px solid #000; width: 160px; text-align: center; padding-top: 5px; font-weight: 900; font-size: 11px; }
+    .footer-area { margin-top: auto; padding-top: 15px; text-align: center; }
+    .footer-row { font-weight: 900; text-transform: uppercase; font-size: 13px; margin-bottom: 5px; }
+    .sign-row { display: flex; justify-content: space-between; margin-top: 35px; padding: 0 15px; }
+    .sign-box { border-top: 1.5px solid #000; width: 180px; text-align: center; padding-top: 6px; font-weight: 900; font-size: 12px; }
 `;
 
 const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
@@ -140,22 +150,16 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           alert("Please select students first.");
           return;
       }
-      
       setIsSyncing(true);
       const updatedRecords = [...annualRecords];
-      
       selectedStudentIds.forEach(sid => {
           const idx = updatedRecords.findIndex(r => r.studentId === sid);
           if (idx >= 0) {
               updatedRecords[idx] = { ...updatedRecords[idx], published: pub };
           } else {
-              updatedRecords.push({
-                  ...getRecord(sid),
-                  published: pub
-              });
+              updatedRecords.push({ ...getRecord(sid), published: pub });
           }
       });
-
       setAnnualRecords(updatedRecords);
       try {
           await dbService.putAll('annualRecords', updatedRecords);
@@ -197,84 +201,88 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       const schoolName = medium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
       const nextClass = className.startsWith('Class ') ? `Class ${parseInt(className.replace('Class ', '')) + 1}` : className === 'Sr. KG' ? 'Class 1' : 'Next Grade';
 
-      const subRows1 = subjects.map((sub, i) => `<tr><td style="width:30px;">${i+1}</td><td class="sub-col">${sub}</td><td style="width:50px;">${record.sem1Grades?.[sub] || '-'}</td></tr>`).join('');
-      const subRows2 = subjects.map((sub, i) => `<tr><td style="width:30px;">${i+1}</td><td class="sub-col">${sub}</td><td style="width:50px;">${record.sem2Grades?.[sub] || '-'}</td></tr>`).join('');
+      const s1Rows = subjects.map((sub, i) => `<tr><td style="width:35px;">${i+1}</td><td class="subject-name">${sub}</td><td style="width:55px;">${record.sem1Grades?.[sub] || '-'}</td></tr>`).join('');
+      const s2Rows = subjects.map((sub, i) => `<tr><td style="width:35px;">${i+1}</td><td class="subject-name">${sub}</td><td style="width:55px;">${record.sem2Grades?.[sub] || '-'}</td></tr>`).join('');
 
       return `
-        <div class="report-page">
-            <div class="header-box">
-                <div class="logo-placeholder">LOGO</div>
-                <div class="header-text">
-                    <div class="trust-name">SHREE GANESH EDUCATION ACADEMY'S</div>
-                    <div class="school-name">${schoolName}</div>
-                    <div class="udise">UDISE :- PRI : 27211003415, SEC : 27211003417</div>
-                    <div class="address">SECTOR 18, NEAR GARDEN, KOPARKHAIRANE, NAVI MUMBAI. PH: 8425919111</div>
-                    <div class="progress-card-title">PROGRESS CARD 2024-25</div>
-                </div>
-            </div>
+        <div class="report-wrapper">
+          <div class="report-page">
+              <div class="header-section">
+                  <div class="logo-box">
+                    <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" class="logo-img" alt="Logo" />
+                  </div>
+                  <div class="header-text">
+                      <div class="trust-name">SHREE GANESH EDUCATION ACADEMY'S</div>
+                      <div class="school-name">${schoolName}</div>
+                      <div class="udise">UDISE :- PRI : 27211003415, SEC : 27211003417</div>
+                      <div class="address">SECTOR 18, NEAR GARDEN, KOPARKHAIRANE, NAVI MUMBAI. PH: 8425919111</div>
+                      <div class="progress-card-title">PROGRESS CARD 2024-25</div>
+                  </div>
+              </div>
 
-            <div class="student-details">
-                <div class="detail-row"><span class="detail-label">Name of the Student :</span><span class="detail-value">${student.name.toUpperCase()}</span></div>
-                <div class="detail-row"><span class="detail-label">Standard :</span><span class="detail-value">${student.className}</span></div>
-                <div class="detail-row"><span class="detail-label">Roll no :</span><span class="detail-value">${student.rollNo}</span></div>
-                <div class="detail-row"><span class="detail-label">DOB :</span><span class="detail-value">${student.dob}</span></div>
-            </div>
+              <div class="student-info-grid">
+                  <span class="info-label">Name of the Student :</span><span class="info-value">${student.name.toUpperCase()}</span>
+                  <span class="info-label">Standard :</span><span class="info-value">${student.className}</span>
+                  <span class="info-label">Roll no :</span><span class="info-value">${student.rollNo}</span>
+                  <span class="info-label">DOB :</span><span class="info-value">${student.dob}</span>
+              </div>
 
-            <div class="section-title">Academic Grades</div>
-            <div class="tables-flex">
-                <div class="semester-box">
-                    <div class="table-header-sm">First Semester</div>
-                    <table>
-                        <thead><tr><th>Sr.no</th><th>Subject</th><th>Grade</th></tr></thead>
-                        <tbody>${subRows1}</tbody>
-                    </table>
-                </div>
-                <div class="semester-box">
-                    <div class="table-header-sm">Second Semester</div>
-                    <table>
-                        <thead><tr><th>Sr.no</th><th>Subject</th><th>Grade</th></tr></thead>
-                        <tbody>${subRows2}</tbody>
-                    </table>
-                </div>
-            </div>
+              <div class="section-head">Grades</div>
+              <div class="grades-container">
+                  <div class="semester-table-box">
+                      <div class="sem-title">First Semester</div>
+                      <table>
+                          <thead><tr><th>Sr.no</th><th>Subject</th><th>Grade</th></tr></thead>
+                          <tbody>${s1Rows}</tbody>
+                      </table>
+                  </div>
+                  <div class="semester-table-box">
+                      <div class="sem-title">Second Semester</div>
+                      <table>
+                          <thead><tr><th>Sr.no</th><th>Subject</th><th>Grade</th></tr></thead>
+                          <tbody>${s2Rows}</tbody>
+                      </table>
+                  </div>
+              </div>
 
-            <div class="section-title">Descriptive Remarks</div>
-            <table class="remarks-table">
-                <thead>
-                    <tr><th colspan="3">First Semester</th><th colspan="3">Second Semester</th></tr>
-                    <tr>
-                        <th>Special Imp.</th><th>Hobbies</th><th>Necessary Imp.</th>
-                        <th>Special Imp.</th><th>Hobbies</th><th>Necessary Imp.</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>${record.specialImprovementsSem1 || ''}</td><td>${record.hobbiesSem1 || ''}</td><td>${record.necessaryImprovementSem1 || ''}</td>
-                        <td>${record.specialImprovementsSem2 || ''}</td><td>${record.hobbiesSem2 || ''}</td><td>${record.necessaryImprovementSem2 || ''}</td>
-                    </tr>
-                </tbody>
-            </table>
+              <div class="section-head">Descriptive Remarks</div>
+              <table class="remarks-table">
+                  <thead>
+                      <tr><th colspan="3">First Semester</th><th colspan="3">Second Semester</th></tr>
+                      <tr>
+                          <th>Special Imp.</th><th>Hobbies</th><th>Necessary Imp.</th>
+                          <th>Special Imp.</th><th>Hobbies</th><th>Necessary Imp.</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      <tr>
+                          <td>${record.specialImprovementsSem1 || ''}</td><td>${record.hobbiesSem1 || ''}</td><td>${record.necessaryImprovementSem1 || ''}</td>
+                          <td>${record.specialImprovementsSem2 || ''}</td><td>${record.hobbiesSem2 || ''}</td><td>${record.necessaryImprovementSem2 || ''}</td>
+                      </tr>
+                  </tbody>
+              </table>
 
-            <div class="grade-key-container">
-                <div class="grade-key-title">Grade Key: Criteria for Evaluation</div>
-                <div class="grade-key-row">
-                    <div class="key-item">91%+ <br/> A1</div><div class="key-item">81-90% <br/> A2</div>
-                    <div class="key-item">71-80% <br/> B1</div><div class="key-item">61-70% <br/> B2</div>
-                    <div class="key-item">51-60% <br/> C1</div><div class="key-item">41-50% <br/> C2</div>
-                    <div class="key-item">33-40% <br/> D</div><div class="key-item">Below 33% <br/> E</div>
-                </div>
-            </div>
+              <div class="grade-key-section">
+                  <div class="key-title">Grade Key</div>
+                  <div class="key-grid">
+                      <div class="key-cell">91%+ <br/> A1</div><div class="key-cell">81-90% <br/> A2</div>
+                      <div class="key-cell">71-80% <br/> B1</div><div class="key-cell">61-70% <br/> B2</div>
+                      <div class="key-cell">51-60% <br/> C1</div><div class="key-cell">41-50% <br/> C2</div>
+                      <div class="key-cell">33-40% <br/> D</div><div class="key-cell">Below 33% <br/> E</div>
+                  </div>
+              </div>
 
-            <div class="footer-section">
-                <div class="footer-line">RESULT : ${record.resultStatus || 'PASS'}</div>
-                <div class="footer-line">NEXT YEAR STANDARD : ${nextClass}</div>
-                <div class="footer-line">SCHOOL WILL REOPEN : 11th JUNE 2025</div>
-                
-                <div class="sig-container">
-                    <div class="sig-box">TEACHER'S SIGN</div>
-                    <div class="sig-box">PRINCIPAL'S SIGN</div>
-                </div>
-            </div>
+              <div class="footer-area">
+                  <div class="footer-row">RESULT : ${record.resultStatus || 'PASS'}</div>
+                  <div class="footer-row">NEXT YEAR STANDARD : ${nextClass}</div>
+                  <div class="footer-row">SCHOOL WILL REOPEN : 11th JUNE 2025</div>
+                  
+                  <div class="sign-row">
+                      <div class="sign-box">TEACHER'S SIGN</div>
+                      <div class="sign-box">PRINCIPAL'S SIGN</div>
+                  </div>
+              </div>
+          </div>
         </div>
       `;
   };
@@ -282,24 +290,17 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
   const downloadPDF = async (student: Student, record: AnnualRecord) => {
       setIsGenerating(true);
       const h2p = (window as any).html2pdf || html2pdf;
-      if (!h2p) {
-          alert("PDF Library not found.");
-          setIsGenerating(false);
-          return;
-      }
-      
+      if (!h2p) { alert("PDF Library not found."); setIsGenerating(false); return; }
       const lib = h2p.default || h2p;
       const element = document.createElement('div');
       element.innerHTML = `<style>${PDF_STYLES_BW}</style>${generatePDFContent(student, record)}`;
-      
       const opt = { 
           margin: 0, 
           filename: `${student.name.replace(/\s+/g, '_')}_ProgressCard_BW.pdf`, 
-          image: { type: 'jpeg', quality: 0.98 }, 
-          html2canvas: { scale: 3, useCORS: true }, 
+          image: { type: 'jpeg', quality: 1.0 }, 
+          html2canvas: { scale: 3, useCORS: true, letterRendering: true }, 
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
-      
       try {
           await lib().set(opt).from(element).save();
       } catch (err) {
@@ -365,17 +366,17 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                         <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Remarks (Sem 1)</h4>
                         <div className="space-y-4">
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Special improvements</label><textarea value={record.specialImprovementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Hobbies</label><textarea value={record.hobbiesSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Necessary Improvement</label><textarea value={record.necessaryImprovementSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Special improvements</label><textarea value={record.specialImprovementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Hobbies</label><textarea value={record.hobbiesSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Necessary Improvement</label><textarea value={record.necessaryImprovementSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                         </div>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                         <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Remarks (Sem 2)</h4>
                         <div className="space-y-4">
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Special improvements</label><textarea value={record.specialImprovementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Hobbies</label><textarea value={record.hobbiesSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
-                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Necessary Improvement</label><textarea value={record.necessaryImprovementSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Special improvements</label><textarea value={record.specialImprovementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Hobbies</label><textarea value={record.hobbiesSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Necessary Improvement</label><textarea value={record.necessaryImprovementSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                         </div>
                     </div>
                 </section>
@@ -394,7 +395,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                     </div>
                     <button 
                         onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)} 
-                        className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'}`}
+                        className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white shadow-emerald-900/40 hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
                     >
                         {record.published ? 'Status: Published' : 'Status: Draft'}
                     </button>
@@ -433,9 +434,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           <div className="bg-indigo-600 text-white p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
               <div className="flex items-center gap-3">
                   <CheckSquare size={20} />
-                  <div>
-                      <p className="font-black uppercase text-xs tracking-widest">{selectedStudentIds.size} Students Selected</p>
-                  </div>
+                  <div><p className="font-black uppercase text-xs tracking-widest">{selectedStudentIds.size} Students Selected</p></div>
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                   <button onClick={() => handleBulkPublish(true)} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">Publish</button>
@@ -497,8 +496,8 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                         <button onClick={() => setPreviewData(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={24}/></button>
                     </div>
                 </div>
-                <div className="flex-1 overflow-auto bg-slate-200 p-8 flex justify-center items-start shadow-inner">
-                    <div className="bg-white shadow-2xl scale-75 sm:scale-100 origin-top" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_BW}</style>${generatePDFContent(previewData.student, previewData.record)}` }} />
+                <div className="flex-1 overflow-auto bg-slate-200 p-4 sm:p-8 flex justify-center items-start shadow-inner">
+                    <div className="bg-white shadow-2xl scale-75 sm:scale-95 origin-top" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_BW}</style>${generatePDFContent(previewData.student, previewData.record)}` }} />
                 </div>
             </div>
         </div>
