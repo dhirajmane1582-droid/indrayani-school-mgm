@@ -23,7 +23,7 @@ const PDF_STYLES_STRETCH = `
         width: 210mm;
         height: 297mm;
         padding: 5mm;
-        background: #ffffff;
+        background: #ffffff !important;
         margin: 0 auto;
         font-family: 'Times New Roman', Times, serif;
         overflow: hidden;
@@ -34,26 +34,26 @@ const PDF_STYLES_STRETCH = `
         border: 2.5px solid #000000;
         height: 100%;
         width: 100%;
-        padding: 5mm;
+        padding: 6mm;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        background: #ffffff;
+        background: #ffffff !important;
     }
-    .header { text-align: center; position: relative; margin-bottom: 5px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; }
+    .header { text-align: center; position: relative; margin-bottom: 5px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff !important; }
     .logo-container { 
         position: absolute; 
         top: 0; 
         left: 0; 
         width: 85px; 
         height: 85px; 
-        background: #ffffff; 
+        background: #ffffff !important; 
         display: flex; 
         align-items: center; 
         justify-content: center;
         z-index: 10;
     }
-    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff; display: block; }
+    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
     .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000; }
     .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; color: #000; margin: 0; line-height: 1.1; }
     .school-details { font-size: 10px; margin-top: 4px; font-weight: bold; color: #000; }
@@ -71,45 +71,45 @@ const PDF_STYLES_STRETCH = `
     .student-info-box { 
         border: 1.5px solid #000; 
         margin-top: 10px; 
-        padding: 10px; 
+        padding: 12px; 
         display: grid; 
         grid-template-columns: 1.2fr 0.8fr; 
-        gap: 6px 20px; 
-        font-size: 12px;
-        background: #ffffff;
+        gap: 8px 25px; 
+        font-size: 13px;
+        background: #ffffff !important;
     }
     .field-row { display: flex; align-items: baseline; }
     .field-label { font-weight: bold; min-width: 100px; text-transform: uppercase; font-size: 11px; color: #000; }
     .field-value { border-bottom: 1.5px dotted #000; flex: 1; font-weight: bold; padding-left: 5px; color: #000; }
 
-    .main-grades-section { flex-grow: 3; display: flex; flex-direction: column; margin: 12px 0; min-height: 0; background: #ffffff; }
+    .main-grades-section { flex-grow: 4; display: flex; flex-direction: column; margin: 15px 0; min-height: 0; background: #ffffff !important; }
     .grades-table { width: 100%; border-collapse: collapse; height: 100%; }
-    .grades-table th { background: #f0f0f0; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000; padding: 6px 4px; color: #000; }
-    .grades-table td { border: 1.5px solid #000; padding: 5px 4px; text-align: center; font-size: 12px; font-weight: bold; color: #000; }
+    .grades-table th { background: #f0f0f0 !important; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000; padding: 10px 4px; color: #000; }
+    .grades-table td { border: 1.5px solid #000; padding: 6px 4px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
     .sub-name { text-align: left; padding-left: 15px; font-size: 12px; }
 
-    .remarks-section { flex-grow: 2; margin-bottom: 12px; display: flex; flex-direction: column; min-height: 0; background: #ffffff; }
+    .remarks-section { flex-grow: 2.5; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff !important; }
     .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; height: 100%; }
-    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000; padding: 6px; font-size: 11px; vertical-align: top; color: #000; }
-    .remarks-grid-table th { background: #f0f0f0; text-transform: uppercase; font-weight: 900; font-size: 10px; }
-    .criteria-label { font-weight: bold; background: #fafafa; width: 160px; text-transform: uppercase; font-size: 9px; vertical-align: middle; }
-    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.3; }
+    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
+    .remarks-grid-table th { background: #f0f0f0 !important; text-transform: uppercase; font-weight: 900; font-size: 10px; }
+    .criteria-label { font-weight: bold; background: #fafafa !important; width: 170px; text-transform: uppercase; font-size: 10px; vertical-align: middle; }
+    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.4; }
 
-    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    .grade-key-row td { border: 1px solid #000; font-size: 9px; padding: 4px; text-align: center; font-weight: bold; background: #fcfcfc; color: #000; }
+    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    .grade-key-row td { border: 1px solid #000; font-size: 10px; padding: 5px; text-align: center; font-weight: bold; background: #fcfcfc !important; color: #000; }
 
     .result-ribbon { 
         border: 2.5px solid #000; 
-        padding: 10px; 
+        padding: 12px; 
         text-align: center; 
-        background: #f0f0f0;
-        margin-bottom: 10px;
+        background: #f0f0f0 !important;
+        margin-bottom: 15px;
     }
-    .result-main { font-size: 15px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; color: #000; }
-    .reopening { font-size: 10px; font-weight: bold; margin-top: 4px; color: #000; }
+    .result-main { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; color: #000; }
+    .reopening { font-size: 11px; font-weight: bold; margin-top: 4px; color: #000; }
 
-    .signatures-row { display: flex; justify-content: space-between; padding: 0 15px; margin-top: 5px; }
-    .sig-block { width: 220px; border-top: 2px solid #000; text-align: center; padding-top: 6px; font-weight: 900; font-size: 12px; text-transform: uppercase; color: #000; }
+    .signatures-row { display: flex; justify-content: space-between; padding: 0 15px; margin-top: 10px; }
+    .sig-block { width: 220px; border-top: 2px solid #000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000; }
 `;
 
 const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
@@ -153,7 +153,8 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       };
   };
 
-  const handleRecordChange = (studentId: string, field: keyof AnnualRecord, value: any, nestedKey?: string) => {
+  const handleRecordChange = async (studentId: string, field: keyof AnnualRecord, value: any, nestedKey?: string) => {
+      let updatedRecord: AnnualRecord;
       setAnnualRecords(prev => {
           const idx = prev.findIndex(r => r.studentId === studentId);
           let rec = idx >= 0 ? { ...prev[idx] } : { ...getRecord(studentId) };
@@ -164,27 +165,39 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
              // @ts-ignore
              rec[field] = value;
           }
+          updatedRecord = rec;
           const newArr = [...prev];
-          if (idx >= 0) {
-              newArr[idx] = rec;
-          } else {
-              newArr.push(rec);
-          }
+          if (idx >= 0) newArr[idx] = rec;
+          else newArr.push(rec);
           return newArr;
       });
+
+      // If we are publishing/unpublishing, push to DB immediately
+      if (field === 'published') {
+          setIsSyncing(true);
+          try {
+              // @ts-ignore (we know updatedRecord is defined from above assignment)
+              await dbService.put('annualRecords', updatedRecord);
+          } finally {
+              setIsSyncing(false);
+          }
+      }
   };
 
   const handleBulkPublish = async (pub: boolean) => {
       if (selectedStudentIds.size === 0) return;
       setIsSyncing(true);
+      const toSync: AnnualRecord[] = [];
       const updatedRecords = [...annualRecords];
       selectedStudentIds.forEach(sid => {
           const idx = updatedRecords.findIndex(r => r.studentId === sid);
-          if (idx >= 0) updatedRecords[idx] = { ...updatedRecords[idx], published: pub };
-          else updatedRecords.push({ ...getRecord(sid), published: pub });
+          let rec = idx >= 0 ? { ...updatedRecords[idx], published: pub } : { ...getRecord(sid), published: pub };
+          if (idx >= 0) updatedRecords[idx] = rec;
+          else updatedRecords.push(rec);
+          toSync.push(rec);
       });
       setAnnualRecords(updatedRecords);
-      try { await dbService.putAll('annualRecords', updatedRecords); setSelectedStudentIds(new Set()); }
+      try { await dbService.putAll('annualRecords', toSync); setSelectedStudentIds(new Set()); }
       finally { setIsSyncing(false); }
   };
 
@@ -323,13 +336,11 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       const opt = { 
           margin: 0, 
           filename: `${student.name.replace(/\s+/g, '_')}_ProgressCard.pdf`, 
-          image: { type: 'png' }, // Enforce PNG to maintain alpha/transparency
+          image: { type: 'png' }, 
           html2canvas: { 
               scale: 3, 
               useCORS: true, 
-              backgroundColor: '#ffffff',
-              logging: false,
-              allowTaint: true
+              backgroundColor: '#ffffff'
           }, 
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
@@ -420,6 +431,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
             <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                 <option value="">Select Class</option>{SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
+            <button onClick={handleBulkPublish.bind(null, true)} className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all">Publish Selected</button>
             <button onClick={handleManualSync} disabled={isSyncing} className={`p-2 rounded-xl border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all ${isSyncing ? 'animate-spin' : ''}`} title="Sync with Cloud"><RefreshCw size={20} /></button>
         </div>
       </div>

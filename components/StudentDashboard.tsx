@@ -27,7 +27,7 @@ const PDF_STYLES_STRETCH_COLOR = `
         width: 210mm;
         height: 297mm;
         padding: 5mm;
-        background: #ffffff;
+        background: #ffffff !important;
         margin: 0 auto;
         font-family: 'Times New Roman', Times, serif;
         overflow: hidden;
@@ -35,16 +35,16 @@ const PDF_STYLES_STRETCH_COLOR = `
         flex-direction: column;
     }
     .page-border {
-        border: 4px double #e11d48;
+        border: 4px double #10b981;
         height: 100%;
         width: 100%;
         padding: 6mm;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        background: #ffffff;
+        background: #ffffff !important;
     }
-    .header { text-align: center; position: relative; margin-bottom: 8px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff; }
+    .header { text-align: center; position: relative; margin-bottom: 8px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff !important; }
     .logo-container { 
         position: absolute; 
         top: 0; 
@@ -52,78 +52,78 @@ const PDF_STYLES_STRETCH_COLOR = `
         width: 85px; 
         height: 85px; 
         padding: 5px; 
-        background: #ffffff; 
+        background: #ffffff !important; 
         border-radius: 12px; 
-        border: 1.5px solid #fecaca; 
+        border: 1.5px solid #d1fae5; 
         display: flex; 
         align-items: center; 
         justify-content: center;
         z-index: 10;
     }
-    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff; display: block; }
-    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #1e1b4b; }
-    .school-name { font-size: 26px; font-weight: 900; text-transform: uppercase; color: #e11d48; margin: 0; line-height: 1; }
-    .school-details { font-size: 10px; margin-top: 5px; font-weight: 800; color: #475569; }
+    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
+    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #064e3b; }
+    .school-name { font-size: 26px; font-weight: 900; text-transform: uppercase; color: #10b981; margin: 0; line-height: 1; }
+    .school-details { font-size: 10px; margin-top: 5px; font-weight: 800; color: #374151; }
     .report-badge { 
         margin-top: 10px; 
         font-size: 16px; 
         font-weight: 900; 
         text-transform: uppercase; 
-        border: 2px solid #e11d48; 
+        border: 2px solid #10b981; 
         display: inline-block; 
         padding: 5px 45px;
-        background: #fff1f2;
-        color: #1e1b4b;
+        background: #ecfdf5;
+        color: #065f46;
         border-radius: 6px;
     }
 
     .student-info-box { 
-        border: 2px solid #e11d48; 
+        border: 2px solid #10b981; 
         margin-top: 15px; 
         padding: 15px; 
         display: grid; 
         grid-template-columns: 1.2fr 0.8fr; 
         gap: 10px 35px; 
-        font-size: 13px;
-        background: #fff1f2;
+        font-size: 14px;
+        background: #f0fdf4;
         border-radius: 12px;
     }
     .field-row { display: flex; align-items: baseline; }
-    .field-label { font-weight: 900; min-width: 120px; text-transform: uppercase; font-size: 11px; color: #e11d48; }
-    .field-value { border-bottom: 2px solid #e11d48; flex: 1; font-weight: bold; color: #1e1b4b; padding-left: 5px; }
+    .field-label { font-weight: 900; min-width: 120px; text-transform: uppercase; font-size: 11px; color: #059669; }
+    .field-value { border-bottom: 2px solid #10b981; flex: 1; font-weight: bold; color: #064e3b; padding-left: 5px; }
 
-    .main-grades-section { flex-grow: 3; display: flex; flex-direction: column; margin: 20px 0; min-height: 0; background: #ffffff; }
+    .main-grades-section { flex-grow: 4; display: flex; flex-direction: column; margin: 20px 0; min-height: 0; background: #ffffff !important; }
     .grades-table { width: 100%; border-collapse: collapse; height: 100%; }
-    .grades-table th { background: #1e1b4b; color: #ffffff; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 2px solid #1e1b4b; padding: 10px 5px; }
-    .grades-table td { border: 2px solid #1e1b4b; padding: 8px 5px; text-align: center; font-size: 12px; font-weight: bold; color: #000; }
-    .sub-name { text-align: left; padding-left: 20px; font-size: 12px; color: #1e1b4b; }
-    .grade-val { color: #e11d48; font-weight: 900; }
+    .grades-table th { background: #065f46; color: #ffffff !important; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 2px solid #065f46; padding: 12px 5px; }
+    .grades-table td { border: 2px solid #065f46; padding: 8px 5px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
+    .sub-name { text-align: left; padding-left: 20px; font-size: 13px; color: #064e3b; }
+    .grade-val { color: #10b981; font-weight: 900; }
 
-    .remarks-section { flex-grow: 2; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff; }
-    .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2.5px solid #e11d48; border-radius: 10px; overflow: hidden; height: 100%; }
-    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #e11d48; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
-    .remarks-grid-table th { background: #1e1b4b; color: #ffffff; text-transform: uppercase; font-weight: 900; font-size: 11px; }
-    .criteria-label { font-weight: 900; background: #fff1f2; width: 160px; text-transform: uppercase; font-size: 10px; color: #e11d48; vertical-align: middle; }
-    .remarks-text-cell { line-height: 1.4; color: #1e1b4b; font-style: italic; font-weight: 600; }
+    .remarks-section { flex-grow: 2.5; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff !important; }
+    .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2.5px solid #10b981; border-radius: 10px; overflow: hidden; height: 100%; }
+    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #10b981; padding: 10px; font-size: 13px; vertical-align: top; color: #000; }
+    .remarks-grid-table th { background: #065f46; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 11px; }
+    .criteria-label { font-weight: 900; background: #f0fdf4 !important; width: 170px; text-transform: uppercase; font-size: 10px; color: #059669; vertical-align: middle; }
+    .remarks-text-cell { line-height: 1.4; color: #064e3b; font-style: italic; font-weight: 600; }
 
     .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .grade-key-row td { border: 1.5px solid #e11d48; font-size: 10px; padding: 5px; text-align: center; font-weight: bold; color: #be123c; background: #fffafb; }
+    .grade-key-row td { border: 1.5px solid #10b981; font-size: 10px; padding: 6px; text-align: center; font-weight: bold; color: #065f46; background: #f9fafb !important; }
 
     .result-ribbon { 
-        border: 3px solid #e11d48; 
-        padding: 12px; 
+        border: 3px solid #10b981; 
+        padding: 15px; 
         text-align: center; 
-        background: #ffffff;
+        background: #ffffff !important;
         margin-bottom: 20px;
         border-radius: 15px;
-        box-shadow: 0 6px 0 #e11d48;
+        box-shadow: 0 6px 0 #10b981;
     }
-    .result-main { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #1e1b4b; }
-    .result-main span { color: #e11d48; }
-    .reopening { font-size: 11px; font-weight: bold; color: #475569; margin-top: 5px; }
+    .result-main { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #064e3b; }
+    .result-main span { color: #10b981; }
+    .reopening { font-size: 11px; font-weight: bold; color: #374151; margin-top: 5px; }
 
     .signatures-row { display: flex; justify-content: space-between; padding: 0 20px; margin-top: 15px; }
-    .sig-block { width: 220px; border-top: 3px solid #1e1b4b; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #1e1b4b; }
+    .sig-block { width: 220px; border-top: 3px solid #065f46; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #065f46; }
 `;
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -213,7 +213,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <td class="remarks-text-cell">${record.hobbiesSem2 || '-'}</td>
                           </tr>
                           <tr>
-                              <td class="criteria-label">Areas for Growth</td>
+                              <td class="criteria-label">Necessary Improvements</td>
                               <td class="remarks-text-cell">${record.necessaryImprovementSem1 || '-'}</td>
                               <td class="remarks-text-cell">${record.necessaryImprovementSem2 || '-'}</td>
                           </tr>
@@ -224,7 +224,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <table class="grade-key-row">
                   <tr>
                       <td>A1: 91%+</td><td>A2: 81-90%</td><td>B1: 71-80%</td><td>B2: 61-70%</td>
-                      <td>C1: 51-60%</td><td>C2: 41-50%</td><td>D: 33-40%</td><td>E: &lt;33%</td>
+                      <td>C1: 51-60%</td><td>C2: 41-50%</td><td>D: 33-40%</td><td>E: <33%</td>
                   </tr>
               </table>
 
@@ -256,9 +256,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         html2canvas: { 
             scale: 3, 
             useCORS: true, 
-            backgroundColor: '#ffffff',
-            logging: false,
-            allowTaint: true
+            backgroundColor: '#ffffff'
         }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
