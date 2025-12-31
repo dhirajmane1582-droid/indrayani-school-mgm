@@ -12,68 +12,10 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
   const [showSql, setShowSql] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sqlSchema = `-- INDRAYANI SCHOOL DATABASE SCHEMA
--- Ensure tables use ON DELETE CASCADE for reliable cross-device deletion.
+  const sqlSchema = `-- INDRAYANI SCHOOL DATABASE FIX SCRIPT
+-- Run this in Supabase SQL Editor to fix "Column not found" or "necessaryImprovement" errors.
 
--- 1. Students Table
-CREATE TABLE IF NOT EXISTS students (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  "rollNo" TEXT,
-  "className" TEXT,
-  medium TEXT,
-  dob TEXT,
-  "placeOfBirth" TEXT,
-  address TEXT,
-  phone TEXT,
-  "alternatePhone" TEXT,
-  "customFields" JSONB DEFAULT '{}'::jsonb
-);
-
--- 2. Users Table
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  name TEXT,
-  role TEXT,
-  "linkedStudentId" UUID REFERENCES students(id) ON DELETE CASCADE
-);
-
--- 3. Attendance Table
-CREATE TABLE IF NOT EXISTS attendance (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT NOT NULL,
-  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  present BOOLEAN
-);
-
--- 4. Exams Table
-CREATE TABLE IF NOT EXISTS exams (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  title TEXT,
-  type TEXT,
-  date TEXT,
-  "className" TEXT,
-  published BOOLEAN DEFAULT false,
-  "customMaxMarks" JSONB DEFAULT '{}'::jsonb,
-  "customEvaluationTypes" JSONB DEFAULT '{}'::jsonb,
-  "activeSubjectIds" TEXT[],
-  "customSubjects" JSONB DEFAULT '[]'::jsonb,
-  timetable JSONB DEFAULT '[]'::jsonb
-);
-
--- 5. Results Table
-CREATE TABLE IF NOT EXISTS results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  "examId" UUID REFERENCES exams(id) ON DELETE CASCADE,
-  marks JSONB DEFAULT '{}'::jsonb,
-  "aiRemark" TEXT,
-  published BOOLEAN DEFAULT false
-);
-
--- 6. Annual Records Table
+-- 1. Ensure Table and Columns exist for Annual Records
 CREATE TABLE IF NOT EXISTS annual_records (
   "studentId" UUID PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
   "academicYear" TEXT,
@@ -87,43 +29,68 @@ CREATE TABLE IF NOT EXISTS annual_records (
   improvements TEXT,
   "improvementsSem1" TEXT,
   "improvementsSem2" TEXT,
+  "specialImprovementsSem1" TEXT,
+  "specialImprovementsSem2" TEXT,
+  "necessaryImprovementSem1" TEXT,
+  "necessaryImprovementSem2" TEXT,
+  "resultStatus" TEXT,
   "customSubjects" TEXT[],
   "subjectOrder" TEXT[],
   medium TEXT,
   published BOOLEAN DEFAULT false
 );
 
--- Migration Helper (Updates columns if they are missing)
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS timetable JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customMaxMarks" JSONB DEFAULT '{}'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customEvaluationTypes" JSONB DEFAULT '{}'::jsonb;
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "activeSubjectIds" TEXT[];
-ALTER TABLE exams ADD COLUMN IF NOT EXISTS "customSubjects" JSONB DEFAULT '[]'::jsonb;
+-- 2. Explicit Migration (Adds missing columns if table already exists)
+DO $$ 
+BEGIN 
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "specialImprovementsSem1" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "specialImprovementsSem2" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "necessaryImprovementSem1" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "necessaryImprovementSem2" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "hobbiesSem1" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "hobbiesSem2" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "resultStatus" TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "sem1Grades" JSONB DEFAULT '{}'::jsonb;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE annual_records ADD COLUMN "sem2Grades" JSONB DEFAULT '{}'::jsonb;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END;
+END $$;
 
--- Other Tables
-CREATE TABLE IF NOT EXISTS custom_field_defs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), label TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS holidays (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT NOT NULL, "endDate" TEXT, name TEXT);
-CREATE TABLE IF NOT EXISTS fees (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "studentId" UUID REFERENCES students(id) ON DELETE CASCADE, amount NUMERIC, date TEXT, remarks TEXT);
-CREATE TABLE IF NOT EXISTS homework (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT, "dueDate" TEXT, "className" TEXT, medium TEXT, subject TEXT, title TEXT, description TEXT);
-CREATE TABLE IF NOT EXISTS announcements (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT, title TEXT, content TEXT, "targetClass" TEXT);
+-- 3. Force Supabase to refresh schema cache (CRITICAL FIX FOR CROSS-DEVICE SYNC)
+NOTIFY pgrst, 'reload schema';
 
--- DISABLE RLS
-ALTER TABLE students DISABLE ROW LEVEL SECURITY;
-ALTER TABLE users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
-ALTER TABLE exams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE results DISABLE ROW LEVEL SECURITY;
+-- 4. Set Permissions
 ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
-ALTER TABLE custom_field_defs DISABLE ROW LEVEL SECURITY;
-ALTER TABLE holidays DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fees DISABLE ROW LEVEL SECURITY;
-ALTER TABLE homework DISABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
 `;
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlSchema);
-    setStatus({ msg: "SQL Copied to Clipboard!", type: 'success' });
+    setStatus({ msg: "SQL Migration Copied!", type: 'success' });
     setTimeout(() => setStatus(null), 3000);
   };
 
@@ -135,7 +102,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (window.confirm("CRITICAL WARNING: This will overwrite ALL data on this device with the backup file. This cannot be undone. Proceed?")) {
+        if (window.confirm("CRITICAL WARNING: This will overwrite ALL data on this device with the backup file. Proceed?")) {
             onImport(json);
             setStatus({ msg: "Database Restored Successfully!", type: 'success' });
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -150,51 +117,63 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
       
-      {/* Cloud Database Setup Panel */}
-      <div className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl border border-slate-800">
+      <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-xl border border-indigo-800">
         <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
                 <div className="bg-indigo-500 p-2 rounded-xl">
                     <Terminal size={20} />
                 </div>
                 <div>
-                    <h3 className="text-lg font-black uppercase tracking-tight">Cloud Database Setup</h3>
-                    <p className="text-xs text-slate-400 font-medium">Enable deletions & sync Timetables</p>
+                    <h3 className="text-lg font-black uppercase tracking-tight text-white">Cloud Database Sync Fix</h3>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes "Column not found" and Publishing errors</p>
                 </div>
             </div>
             <button 
                 onClick={() => setShowSql(!showSql)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold uppercase transition-all"
+                className="px-4 py-2 bg-indigo-800 hover:bg-indigo-700 rounded-lg text-xs font-bold uppercase transition-all border border-indigo-400/30"
             >
-                {showSql ? 'Hide SQL' : 'Show SQL Script'}
+                {showSql ? 'Hide Script' : 'Show Repair SQL'}
             </button>
         </div>
 
         {showSql && (
             <div className="space-y-4 animate-in zoom-in-95 duration-200 mt-4">
-                <p className="text-xs text-slate-300 leading-relaxed bg-indigo-500/10 p-4 rounded-xl border border-indigo-500/20">
-                    <strong>Critical:</strong> If you are getting errors while deleting students, or if timetables aren't syncing, copy the code below and run it in your <strong>Supabase SQL Editor</strong>. It ensures "ON DELETE CASCADE" is enabled and all necessary columns (like Timetables) are present.
-                </p>
+                <div className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-3">
+                    <p className="text-sm font-bold text-indigo-100 flex items-center gap-2">
+                        <AlertTriangle size={16} className="text-amber-400" /> 
+                        Why run this?
+                    </p>
+                    <p className="text-xs text-indigo-100">
+                        The "Published" reports aren't syncing because your Supabase database is missing the new SEMESTER columns. This script creates them and clears the cache.
+                    </p>
+                    <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
+                        <li>Click the purple <strong>Copy</strong> icon on the code block.</li>
+                        <li>Click <strong>Open Supabase SQL Editor</strong>.</li>
+                        <li>Paste and click <strong>Run</strong>.</li>
+                    </ol>
+                </div>
+                
                 <div className="relative">
-                    <pre className="bg-black/50 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[300px] text-emerald-400 border border-white/5">
+                    <pre className="bg-black/40 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[250px] text-emerald-400 border border-white/5">
                         {sqlSchema}
                     </pre>
                     <button 
                         onClick={copySql}
-                        className="absolute top-2 right-2 p-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg transition-all active:scale-90"
+                        className="absolute top-2 right-2 p-2 bg-indigo-600 hover:bg-indigo-50 rounded-lg shadow-lg transition-all active:scale-90"
                         title="Copy SQL"
                     >
                         <Copy size={16} />
                     </button>
                 </div>
+                
                 <div className="flex gap-4">
                     <a 
-                        href="https://supabase.com/dashboard/projects" 
+                        href="https://supabase.com/dashboard/project/tubdjcdghosxozzehuep/sql/new" 
                         target="_blank" 
                         rel="noreferrer"
-                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-indigo-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-xl"
                     >
-                        Open Supabase Console <ExternalLink size={14} />
+                        Open Supabase SQL Editor <ExternalLink size={14} />
                     </a>
                 </div>
             </div>
@@ -203,12 +182,12 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-3 mb-6">
-          <div className="bg-indigo-600 p-3 rounded-2xl text-white shadow-lg shadow-indigo-100">
+          <div className="bg-slate-100 p-3 rounded-2xl text-slate-600">
             <Database size={24} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">System Data Management</h2>
-            <p className="text-sm text-slate-500 font-medium">Backup and transfer school records between devices.</p>
+            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">System Backup</h2>
+            <p className="text-sm text-slate-500 font-medium">Export or import full database snapshots.</p>
           </div>
         </div>
 
@@ -220,7 +199,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">Create Backup</h3>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Generate a portable JSON file containing all students, results, attendance, and user accounts. Store this file safely to prevent data loss.
+                Download a JSON file containing all school data for safe keeping.
               </p>
             </div>
             <button 
@@ -228,7 +207,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
               className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <FileJson size={18} />
-              Download System Backup
+              Download Backup
             </button>
           </div>
 
@@ -237,9 +216,9 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
               <div className="w-12 h-12 rounded-xl bg-white border border-rose-100 flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform">
                 <UploadCloud size={24} />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Restore / Sync</h3>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Restore Sync</h3>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Upload a backup file from another device to sync accounts and records. <strong>Warning:</strong> Current data on this device will be deleted.
+                Upload a backup file to overwrite data on this device.
               </p>
             </div>
             <input 
@@ -254,7 +233,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
               className="w-full py-4 bg-white text-rose-600 border border-rose-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <ShieldAlert size={18} />
-              Import Data File
+              Import Backup
             </button>
           </div>
         </div>
@@ -265,18 +244,6 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
             <span className="text-sm font-bold">{status.msg}</span>
           </div>
         )}
-      </div>
-
-      <div className="bg-amber-50 p-6 rounded-2xl border border-amber-200 flex gap-4">
-        <AlertTriangle className="text-amber-600 shrink-0 mt-1" size={24} />
-        <div>
-          <h4 className="font-bold text-amber-900 mb-1 uppercase text-xs tracking-wider">Deletions Not Syncing?</h4>
-          <p className="text-xs text-amber-800 leading-relaxed font-medium">
-            If you delete a student but they reappear after a refresh, it means your Supabase database is preventing the deletion due to "Foreign Key Constraints" (linked results or attendance). 
-            <br/><br/>
-            <strong>Solution:</strong> Use the "Cloud Database Setup" above to update your schema. Ensure your SQL tables include <code>ON DELETE CASCADE</code> for all student references.
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Student, StudentResult, AttendanceRecord, CLASSES, SPECIFIC_CLASSES, getSubjectsForClass, Exam, Subject } from '../types';
-import { ChevronDown, Save, BookPlus, Globe, RefreshCcw, Edit3, X, Trash2, CheckSquare, Square, PlusCircle, Info, Calculator, Award, FileDown, Eye, Download, Printer, ChevronRight, User, AlertTriangle, GlobeLock, UserMinus, Eraser, Upload } from 'lucide-react';
+import { ChevronDown, Save, BookPlus, Globe, RefreshCcw, Edit3, X, Trash2, CheckSquare, Square, PlusCircle, Info, Calculator, Award, FileDown, Eye, Download, Printer, ChevronRight, User, AlertTriangle, GlobeLock, UserMinus, Eraser, Upload, SortAsc, Hash } from 'lucide-react';
 import { generateStudentRemark } from '../services/geminiService';
 import * as XLSX from 'xlsx';
 // @ts-ignore
@@ -60,6 +60,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
   const [selectedMedium, setSelectedMedium] = useState<'English' | 'Semi'>('English');
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'rollNo' | 'name'>('rollNo');
   
   const [toastMsg, setToastMsg] = useState('');
   const [isManageSubjectsOpen, setIsManageSubjectsOpen] = useState(false);
@@ -109,9 +110,16 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
     }));
   }, [selectedClass, currentExam, standardSubjects]);
 
-  const filteredStudents = useMemo(() => 
-    selectedClass ? students.filter(s => s.className === selectedClass && (s.medium || 'English') === selectedMedium) : []
-  , [students, selectedClass, selectedMedium]);
+  const filteredStudents = useMemo(() => {
+    if (!selectedClass) return [];
+    let list = students.filter(s => s.className === selectedClass && (s.medium || 'English') === selectedMedium);
+    
+    if (sortBy === 'rollNo') {
+        return list.sort((a, b) => (parseInt(a.rollNo) || 0) - (parseInt(b.rollNo) || 0));
+    } else {
+        return list.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }, [students, selectedClass, selectedMedium, sortBy]);
 
   const getStudentResult = (id: string) => {
     return results.find(r => r.studentId === id && r.examId === selectedExamId) || { studentId: id, examId: selectedExamId, marks: {}, published: false };
@@ -381,6 +389,22 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                {/* SORT PICKER */}
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                    <button 
+                        onClick={() => setSortBy('rollNo')}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'rollNo' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <Hash size={14}/> Roll No
+                    </button>
+                    <button 
+                        onClick={() => setSortBy('name')}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'name' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <SortAsc size={14}/> By Name
+                    </button>
+                </div>
+
                 <div className="relative">
                    <select
                      value={selectedClass ? `${selectedClass}|${selectedMedium}` : ''}
@@ -501,7 +525,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                             />
                             <div className="w-10 text-center font-mono text-slate-400 font-bold">{student.rollNo}</div>
                             <div className="flex-1 overflow-hidden">
-                                <div className="font-bold text-slate-800 text-sm leading-tight truncate">{student.name}</div>
+                                <div className="font-bold text-slate-800 text-sm leading-tight truncate uppercase">{student.name}</div>
                                 <div className="flex items-center gap-2 mt-1">
                                     {isPublished ? 
                                         <span className="text-[9px] font-black bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full uppercase flex items-center gap-1"><Globe size={10}/> Published</span> : 

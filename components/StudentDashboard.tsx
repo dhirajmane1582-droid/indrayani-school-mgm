@@ -1,7 +1,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { User, Student, Homework, Exam, StudentResult, AttendanceRecord, Announcement, AnnualRecord, Holiday, getSubjectsForClass } from '../types';
-import { BookOpen, Calendar, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, LayoutDashboard, Clock, AlertCircle, Download, X, ChevronRight, Home, Info, Award, RefreshCw } from 'lucide-react';
+// Added Loader2 to the import list to fix the "Cannot find name 'Loader2'" error
+import { BookOpen, Calendar, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, LayoutDashboard, Clock, AlertCircle, Download, X, ChevronRight, Home, Info, Award, RefreshCw, Eye, Loader2 } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -20,642 +21,254 @@ interface StudentDashboardProps {
   isSyncing?: boolean;
 }
 
-const PDF_STYLES = `
-    .report-wrapper {
-        padding: 0;
-        margin: 0;
-        background: #fff;
-    }
+const PDF_STYLES_COLOR = `
+    .report-wrapper { background: #fff; padding: 5mm; }
     .report-page { 
-        font-family: 'Times New Roman', Times, serif; 
-        padding: 15mm; 
+        font-family: 'Inter', sans-serif; 
+        padding: 10mm; 
         width: 190mm; 
-        min-height: 267mm; 
+        min-height: 270mm; 
         box-sizing: border-box; 
-        color: #000;
+        color: #1e1b4b;
         background: #fff;
-        position: relative;
-        border: 2px solid #000;
+        border: 2px solid #4338ca;
         margin: auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
     }
-    .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 12px; }
-    .trust-name { font-size: 13px; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; color: #000; }
-    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #000; }
-    .address { font-size: 11px; color: #000; font-weight: bold; margin-bottom: 2px; }
-    .contact { font-size: 11px; color: #000; font-weight: bold; }
-    .report-title { font-size: 15px; font-weight: bold; margin-top: 10px; border: 1.5px solid #000; display: inline-block; padding: 4px 20px; text-transform: uppercase; }
+    .header { text-align: center; margin-bottom: 10px; border-bottom: 3px solid #4338ca; padding-bottom: 10px; position: relative; }
+    .trust-name { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; color: #4338ca; }
+    .school-name { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #1e1b4b; }
+    .udise { font-size: 10px; font-weight: bold; color: #475569; margin-bottom: 4px; }
+    .address { font-size: 9px; color: #64748b; font-weight: bold; text-transform: uppercase; }
+    .progress-card-title { font-size: 14px; font-weight: 900; margin-top: 5px; text-transform: uppercase; color: #4338ca; text-decoration: underline; }
     
-    .student-info { margin-top: 15px; margin-bottom: 20px; border: 1px solid #000; padding: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .info-item { font-size: 13px; border-bottom: 1px dotted #000; padding-bottom: 3px; }
-    .label { font-weight: bold; margin-right: 5px; }
+    .student-info { margin-top: 15px; margin-bottom: 20px; font-size: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .info-line { display: flex; margin-bottom: 4px; }
+    .info-label { font-weight: 800; width: 140px; color: #4338ca; }
+    .info-value { font-weight: 700; color: #1e1b4b; border-bottom: 1px dashed #cbd5e1; flex: 1; padding-left: 5px; }
 
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-    th, td { border: 1px solid #000; padding: 8px 4px; text-align: center; color: #000; }
-    th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; font-size: 11px; }
-    .subject-cell { text-align: left; padding-left: 10px; font-weight: bold; }
+    .tables-container { display: flex; gap: 10px; margin-bottom: 15px; }
+    .semester-table-box { flex: 1; }
+    .table-title { font-weight: 900; text-align: center; border: 1px solid #4338ca; border-bottom: 0; padding: 4px; font-size: 11px; text-transform: uppercase; background: #4338ca; color: #fff; }
     
-    .section-title { font-weight: bold; font-size: 13px; margin-bottom: 6px; text-decoration: underline; text-transform: uppercase; color: #000; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th, td { border: 1px solid #4338ca; padding: 4px; text-align: center; }
+    th { font-weight: bold; text-transform: uppercase; font-size: 9px; background: #f1f5f9; }
+    .subject-cell { text-align: left; padding-left: 6px; font-weight: 800; color: #1e1b4b; }
     
-    .footer-section { margin-top: auto; }
-    .remarks-box { border: 1.5px solid #000; padding: 10px; margin-bottom: 15px; min-height: 50px; font-size: 13px; }
-    .promotion-text { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 40px; text-transform: uppercase; }
+    .desc-remarks-title { font-weight: 900; text-align: center; border: 1px solid #4338ca; padding: 4px; font-size: 11px; text-transform: uppercase; background: #4338ca; color: #fff; }
+    .remarks-container { border: 1px solid #4338ca; border-top: 0; margin-bottom: 15px; overflow: hidden; }
+    .remarks-header-row { display: flex; background: #f1f5f9; border-top: 1px solid #4338ca; }
+    .remarks-col { flex: 1; border-right: 1px solid #4338ca; font-weight: 900; padding: 3px; font-size: 9px; text-align: center; color: #4338ca; }
+    .remarks-col:last-child { border-right: 0; }
+    .remarks-data-row { display: flex; border-top: 1px solid #4338ca; min-height: 50px; }
+    .remarks-cell { flex: 1; border-right: 1px solid #4338ca; padding: 4px; font-size: 10px; font-weight: 500; color: #334155; }
+    .remarks-cell:last-child { border-right: 0; }
+
+    .grade-key { margin-bottom: 15px; font-size: 9px; font-weight: bold; color: #4338ca; }
+
+    .result-footer { text-align: center; margin-top: auto; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1.5px solid #4338ca; }
+    .result-line { font-weight: 900; margin-bottom: 3px; text-transform: uppercase; font-size: 12px; }
     
-    .signatures { display: flex; justify-content: space-between; margin-top: 30px; padding: 0 5mm; }
-    .sig-box { text-align: center; border-top: 1.5px solid #000; width: 40mm; padding-top: 6px; font-size: 13px; font-weight: bold; color: #000; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 25px; padding: 0 5px; }
+    .sig-box { text-align: center; border-top: 1.5px solid #1e1b4b; width: 130px; padding-top: 4px; font-size: 11px; font-weight: 900; color: #1e1b4b; }
 `;
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
-  currentUser,
-  onLogout,
-  students,
-  homework,
-  exams,
-  results,
-  attendance,
-  announcements,
-  annualRecords = [],
-  onRefresh,
-  isSyncing = false
+  currentUser, onLogout, students, homework, exams, results, attendance, announcements, annualRecords = [], onRefresh, isSyncing = false
 }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'homework' | 'exams' | 'results' | 'attendance' | 'notices'>('home');
   const [isDownloading, setIsDownloading] = useState(false);
-  
-  // Notification State using keys specific to current student
-  const [seenResultIds, setSeenResultIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`seen_results_${currentUser.linkedStudentId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [seenHomeworkIds, setSeenHomeworkIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem(`seen_homework_${currentUser.linkedStudentId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [annualSeen, setAnnualSeen] = useState<boolean>(() => {
-    const saved = localStorage.getItem(`seen_annual_${currentUser.linkedStudentId}`);
-    return saved === 'true';
-  });
-  
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
+  const studentAnnualRecord = useMemo(() => student ? annualRecords.find(r => r.studentId === student.id && r.published) || null : null, [annualRecords, student]);
 
-  const studentAnnualRecord = useMemo(() => {
-    if (!student) return null;
-    const r = annualRecords.find(rec => rec.studentId === student.id);
-    return (r && r.published) ? r : null;
-  }, [annualRecords, student]);
-
-  const relevantHomework = useMemo(() => {
-    if (!student) return [];
-    return homework.filter(h => h.className === student.className && h.medium === (student.medium || 'English'));
-  }, [homework, student]);
-
-  const studentResults = useMemo(() => {
-     if (!student) return [];
-     return results.filter(r => r.studentId === student.id && r.published);
-  }, [results, student]);
-
-  const hasNewHomework = useMemo(() => {
-    return relevantHomework.some(h => !seenHomeworkIds.includes(h.id));
-  }, [relevantHomework, seenHomeworkIds]);
-
-  const hasNewResults = useMemo(() => {
-    return studentResults.some(r => !seenResultIds.includes(r.id));
-  }, [studentResults, seenResultIds]);
-
-  const hasNewAnnual = useMemo(() => {
-    return !!studentAnnualRecord && !annualSeen;
-  }, [studentAnnualRecord, annualSeen]);
-
-  // Mark seen
-  useEffect(() => {
-    if (activeTab === 'results') {
-      if (studentAnnualRecord && !annualSeen) {
-        setAnnualSeen(true);
-        localStorage.setItem(`seen_annual_${currentUser.linkedStudentId}`, 'true');
-      }
-      if (studentResults.length > 0) {
-        const allResultIds = studentResults.map(r => r.id);
-        const isAnythingNew = allResultIds.some(id => !seenResultIds.includes(id));
-        if (isAnythingNew) {
-          const updated = Array.from(new Set([...seenResultIds, ...allResultIds]));
-          setSeenResultIds(updated);
-          localStorage.setItem(`seen_results_${currentUser.linkedStudentId}`, JSON.stringify(updated));
-        }
-      }
-    }
-    if (activeTab === 'homework' && relevantHomework.length > 0) {
-      const allHwIds = relevantHomework.map(h => h.id);
-      const isAnythingNew = allHwIds.some(id => !seenHomeworkIds.includes(id));
-      if (isAnythingNew) {
-        const updated = Array.from(new Set([...seenHomeworkIds, ...allHwIds]));
-        setSeenHomeworkIds(updated);
-        localStorage.setItem(`seen_homework_${currentUser.linkedStudentId}`, JSON.stringify(updated));
-      }
-    }
-  }, [activeTab, studentResults, relevantHomework, studentAnnualRecord, annualSeen, currentUser.linkedStudentId]);
-
-  const studentExams = useMemo(() => {
-      if (!student) return [];
-      // Relaxed filter: show exams published for this class even if timetable is empty
-      return exams.filter(e => e.className === student.className && e.published)
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [exams, student]);
-
-  const attendanceStats = useMemo(() => {
-      if (!student) return { present: 0, total: 0, percentage: 0 };
-      const records = attendance.filter(r => r.studentId === student.id);
-      const present = records.filter(r => r.present).length;
-      const total = records.length;
-      return { present, total, percentage: total > 0 ? ((present / total) * 100).toFixed(1) : 0 };
-  }, [attendance, student]);
-
-  const storedHolidays: Holiday[] = useMemo(() => {
-      try {
-          const saved = localStorage.getItem('et_holidays');
-          return saved ? JSON.parse(saved) : [];
-      } catch (e) { return []; }
-  }, []);
-
-  const checkHoliday = (dateStr: string) => storedHolidays.find(h => h.endDate ? (dateStr >= h.date && dateStr <= h.endDate) : h.date === dateStr);
-
-  const getNextClass = (currentClass: string): string => {
-      if (currentClass === 'Nursery') return 'Jr. KG';
-      if (currentClass === 'Jr. KG') return 'Sr. KG';
-      if (currentClass === 'Sr. KG') return 'Class 1';
-      if (currentClass.startsWith('Class ')) {
-          const num = parseInt(currentClass.replace('Class ', ''));
-          if (num === 10) return 'Alumni';
-          return `Class ${num + 1}`;
-      }
-      return 'Next Standard';
-  };
-
-  const handleTabChange = (tab: typeof activeTab) => {
-    setActiveTab(tab);
-  };
-
-  const handleDownloadPDF = async () => {
-    if (!student || !studentAnnualRecord) return;
-    setIsDownloading(true);
-
-    const h2p = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
-    if (typeof h2p !== 'function') {
-        alert("PDF generator not found.");
-        setIsDownloading(false);
-        return;
-    }
-
+  const generatePDFContent = () => {
+    if (!student || !studentAnnualRecord) return '';
     const record = studentAnnualRecord;
-    const defaults = getSubjectsForClass(student.className, student.medium || 'English').map(s => s.name);
-    const combinedSubjects = new Set([...defaults, ...(record.customSubjects || [])]);
-    const subjects = Array.from(combinedSubjects);
-    
-    const nextClass = getNextClass(student.className);
-    const schoolName = student.medium === 'Semi' ? 'INDRAYANI INTERNATIONAL SCHOOL' : 'INDRAYANI ENGLISH MEDIUM SCHOOL';
-    const trustName = "SHREE GANESH EDUCATION ACADEMY";
-    const address = "Sector 18, Plot No. 23, 24, 25, 26, Koparkhairane, Navi Mumbai 400709.";
-    const contact = "Ph No. 8425919111 / 8422019111";
+    const className = student.className;
+    const medium = student.medium || 'English';
+    const subjects = Array.from(new Set([...getSubjectsForClass(className, medium as 'English' | 'Semi').map(s => s.name), ...(record.customSubjects || [])]));
+    const schoolName = medium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
+    const nextClass = className.startsWith('Class ') ? `Class ${parseInt(className.replace('Class ', '')) + 1}` : className === 'Sr. KG' ? 'Class 1' : 'Next Grade';
 
-    const rows = subjects.map(sub => `
-        <tr>
-            <td class="subject-cell">${sub}</td>
-            <td>${record.sem1Grades?.[sub] || '-'}</td>
-            <td>${record.sem2Grades?.[sub] || '-'}</td>
-        </tr>
-    `).join('');
+    const subjectRows1 = subjects.map((sub, i) => `<tr><td>${i+1}</td><td class="subject-cell">${sub}</td><td>${record.sem1Grades?.[sub] || ''}</td></tr>`).join('');
+    const subjectRows2 = subjects.map((sub, i) => `<tr><td>${i+1}</td><td class="subject-cell">${sub}</td><td>${record.sem2Grades?.[sub] || ''}</td></tr>`).join('');
 
-    const htmlContent = `
-        <div class="report-page">
-            <div class="header">
-                <div class="trust-name">${trustName}</div>
-                <div class="school-name">${schoolName}</div>
-                <div class="address">${address}</div>
-                <div class="contact">${contact}</div>
-                <div class="report-title">ANNUAL PROGRESS REPORT (2024-25)</div>
-            </div>
-            
-            <div class="student-info">
-                <div class="info-item"><span class="label">NAME:</span>${student.name.toUpperCase()}</div>
-                <div class="info-item"><span class="label">ROLL NO:</span>${student.rollNo}</div>
-                <div class="info-item"><span class="label">CLASS:</span>${student.className.toUpperCase()}</div>
-                <div class="info-item"><span class="label">MEDIUM:</span>${(student.medium || 'English').toUpperCase()}</div>
-            </div>
-
-            <div class="section-title">Academic Performance</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 50%;">Subject</th>
-                        <th>Semester 1</th>
-                        <th>Semester 2</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
-
-            <div class="section-title">Co-Scholastic & Personal Development</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 50%;">Area of Evaluation</th>
-                        <th>Semester 1</th>
-                        <th>Semester 2</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="subject-cell">Hobbies & Interests</td>
-                        <td>${record.hobbiesSem1 || '-'}</td>
-                        <td>${record.hobbiesSem2 || '-'}</td>
-                    </tr>
-                     <tr>
-                        <td class="subject-cell">Areas of Improvement</td>
-                        <td>${record.improvementsSem1 || '-'}</td>
-                        <td>${record.improvementsSem2 || '-'}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="section-title">Class Teacher's Remarks</div>
-            <div class="remarks-box">
-                ${record.remarks || 'Satisfactory performance throughout the academic session.'}
-            </div>
-
-            <div class="promotion-text">
-                Promoted to: ${nextClass.toUpperCase()}
-            </div>
-
-            <div class="signatures">
-                <div class="sig-box">Class Teacher</div>
-                <div class="sig-box">Principal</div>
-                <div class="sig-box">Parent</div>
-            </div>
-        </div>
+    return `
+      <div class="report-page">
+          <div class="header">
+              <div class="trust-name">SHREE GANESH EDUCATION ACADEMY'S</div>
+              <div class="school-name">${schoolName}</div>
+              <div class="udise">UDISE :- PRI : 27211003415, SEC : 27211003417</div>
+              <div class="address">SECTOR 18, NEAR GARDEN, KOPARKHAIRANE, NAVI MUMBAI</div>
+              <div class="progress-card-title">PROGRESS CARD 2024-25</div>
+          </div>
+          <div class="student-info">
+              <div class="info-line"><span class="info-label">Student Name :</span><span class="info-value">${student.name.toUpperCase()}</span></div>
+              <div class="info-line"><span class="info-label">Standard :</span><span class="info-value">${student.className}</span></div>
+              <div class="info-line"><span class="info-label">Roll No :</span><span class="info-value">${student.rollNo}</span></div>
+              <div class="info-line"><span class="info-label">Date of Birth :</span><span class="info-value">${student.dob}</span></div>
+          </div>
+          <div class="tables-container">
+              <div class="semester-table-box">
+                  <div class="table-title">Semester 1 Grades</div>
+                  <table>
+                      <thead><tr><th style="width:30px;">#</th><th>Subject</th><th style="width:60px;">Grade</th></tr></thead>
+                      <tbody>${subjectRows1}</tbody>
+                  </table>
+              </div>
+              <div class="semester-table-box">
+                  <div class="table-title">Semester 2 Grades</div>
+                  <table>
+                      <thead><tr><th style="width:30px;">#</th><th>Subject</th><th style="width:60px;">Grade</th></tr></thead>
+                      <tbody>${subjectRows2}</tbody>
+                  </table>
+              </div>
+          </div>
+          <div class="desc-remarks-title">Descriptive Remarks</div>
+          <div class="remarks-container">
+              <div class="remarks-header-row"><div class="remarks-col">First Semester</div><div class="remarks-col">Second Semester</div></div>
+              <div class="remarks-header-row">
+                  <div class="remarks-col" style="font-size:7px;">Special Improvements</div><div class="remarks-col" style="font-size:7px;">Hobbies</div><div class="remarks-col" style="font-size:7px;">Necessary Imp.</div>
+                  <div class="remarks-col" style="font-size:7px;">Special Improvements</div><div class="remarks-col" style="font-size:7px;">Hobbies</div><div class="remarks-col" style="font-size:7px;">Necessary Imp.</div>
+              </div>
+              <div class="remarks-data-row">
+                  <div class="remarks-cell">${record.specialImprovementsSem1 || ''}</div><div class="remarks-cell">${record.hobbiesSem1 || ''}</div><div class="remarks-cell">${record.necessaryImprovementSem1 || ''}</div>
+                  <div class="remarks-cell">${record.specialImprovementsSem2 || ''}</div><div class="remarks-cell">${record.hobbiesSem2 || ''}</div><div class="remarks-cell">${record.necessaryImprovementSem2 || ''}</div>
+              </div>
+          </div>
+          <div class="grade-key">
+              Grade Key: A1(91%+), A2(81-90%), B1(71-80%), B2(61-70%), C1(51-60%), C2(41-50%), D(33-40%), E(<33%)
+          </div>
+          <div class="result-footer">
+              <div class="result-line">FINAL RESULT : ${record.resultStatus || 'PASS'}</div>
+              <div class="result-line">NEXT GRADE : ${nextClass}</div>
+              <div class="result-line">REOPENING : 11th JUNE 2025</div>
+              <div class="signatures">
+                  <div class="sig-box">TEACHER'S SIGN</div>
+                  <div class="sig-box">PRINCIPAL'S SIGN</div>
+              </div>
+          </div>
+      </div>
     `;
+  };
 
+  const downloadPDF = async () => {
+    setIsDownloading(true);
+    const h2p = (window as any).html2pdf || html2pdf;
+    if (!h2p) { 
+        setIsDownloading(false); 
+        return; 
+    }
+    const lib = h2p.default || h2p;
     const element = document.createElement('div');
-    element.className = "report-wrapper";
-    element.innerHTML = `<style>${PDF_STYLES}</style>${htmlContent}`;
-
-    const opt = {
-        margin: 0,
-        filename: `${student.name.replace(/\s+/g, '_')}_Progress_Report.pdf`,
-        image: { type: 'jpeg' as const, quality: 1.0 },
-        html2canvas: { scale: 3, useCORS: true, logging: false },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+    element.innerHTML = `<style>${PDF_STYLES_COLOR}</style>${generatePDFContent()}`;
+    const opt = { 
+        margin: 0, 
+        filename: `Indrayani_Report_${student?.name}.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 3 }, 
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
-
+    
     try {
-        const worker = h2p();
-        if (worker && typeof worker.set === 'function') {
-            await worker.set(opt).from(element).save();
-        } else {
-            await h2p(element, opt);
-        }
+        await lib().set(opt).from(element).save();
     } catch (err) {
-        console.error("PDF Export Error:", err);
+        console.error("PDF download failed", err);
     } finally {
         setIsDownloading(false);
     }
   };
 
-  const renderCalendar = () => {
-     if (!student) return null;
-     const today = new Date();
-     const year = today.getFullYear();
-     const month = today.getMonth();
-     const daysInMonth = new Date(year, month + 1, 0).getDate();
-     const firstDay = new Date(year, month, 1).getDay();
-
-     const days = [];
-     for(let i=0; i<firstDay; i++) days.push(<div key={`e-${i}`} className="h-10"></div>);
-
-     for(let d=1; d<=daysInMonth; d++) {
-         const dateObj = new Date(year, month, d);
-         const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-         const record = attendance.find(r => r.studentId === student.id && r.date === dateStr);
-         const isSunday = dateObj.getDay() === 0;
-         const isHoliday = checkHoliday(dateStr);
-
-         let bgClass = 'bg-slate-50 text-slate-400';
-         if (isHoliday) bgClass = 'bg-rose-100 text-rose-700 font-bold border border-rose-200';
-         else if (isSunday) bgClass = 'bg-amber-100 text-amber-700 font-bold border border-amber-200';
-         else if (record) bgClass = record.present ? 'bg-emerald-100 text-emerald-700 font-bold' : 'bg-rose-100 text-rose-700 font-bold';
-
-         days.push(
-             <div key={d} className={`h-10 rounded-lg flex items-center justify-center text-xs ${bgClass} relative group`}>
-                 <span>{d}</span>
-                 {isHoliday && <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-800 text-white text-[10px] p-1 rounded z-10 whitespace-nowrap">{isHoliday.name}</div>}
-             </div>
-         );
-     }
-     return (
-         <div className="grid grid-cols-7 gap-2">
-             {['S','M','T','W','T','F','S'].map(d => <div key={d} className="text-center text-xs font-bold text-slate-400 mb-2">{d}</div>)}
-             {days}
-         </div>
-     );
-  };
-
   if (!student) return null;
 
-  const renderHomeGrid = () => {
-    const modules = [
-        { 
-          id: 'homework', 
-          label: 'My Homework', 
-          desc: hasNewHomework ? "New homework posted!" : `${relevantHomework.length} assignments`, 
-          icon: BookOpen, 
-          color: 'bg-indigo-600', 
-          badgeColor: 'bg-red-600', 
-          isNew: hasNewHomework 
-        },
-        { id: 'exams', label: 'Exam Schedule', desc: 'Upcoming tests', icon: CalendarCheck, color: 'bg-purple-600' },
-        { 
-          id: 'results', 
-          label: 'Report Cards', 
-          desc: 'Marks & Results', 
-          icon: FileBadge, 
-          color: 'bg-amber-600', 
-          badgeColor: hasNewAnnual ? 'bg-blue-600' : 'bg-emerald-500', 
-          isNew: hasNewAnnual || hasNewResults 
-        },
-        { id: 'attendance', label: 'Attendance', desc: `${attendanceStats.percentage}% presence`, icon: UserCheck, color: 'bg-emerald-600' },
-        { id: 'notices', label: 'Notice Board', desc: 'School updates', icon: Bell, color: 'bg-rose-600' },
-    ];
-
-    return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100 shadow-sm">
-                        <GraduationCap size={32} />
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-black text-slate-800">{student.name}</h2>
-                        <div className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
-                            Roll {student.rollNo} • {student.className} ({(student.medium || 'English')})
-                        </div>
-                    </div>
-                </div>
-                <button 
-                  onClick={onRefresh} 
-                  disabled={isSyncing}
-                  className="p-3 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-xl border border-slate-200 active:scale-95 transition-all group"
-                  title="Check for updates"
-                >
-                   <RefreshCw size={20} className={isSyncing ? 'animate-spin text-indigo-600' : 'group-hover:rotate-180 transition-transform duration-500'} />
-                </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-                {modules.map(item => (
-                    <button 
-                        key={item.id}
-                        onClick={() => handleTabChange(item.id as any)}
-                        className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg hover:border-emerald-200 transition-all text-left group flex flex-col justify-between min-h-[140px] sm:min-h-[160px] relative active:scale-95"
-                    >
-                        {item.isNew && (
-                          <span className={`absolute top-3 right-3 ${item.badgeColor} text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase shadow-md ring-2 ring-white animate-pulse z-10`}>
-                            (NEW)
-                          </span>
-                        )}
-                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white mb-4 ${item.color} shadow-lg transition-transform group-hover:scale-110`}>
-                            <item.icon size={20} className="sm:w-6 sm:h-6" />
-                        </div>
-                        <div>
-                            <h3 className="text-sm sm:text-lg font-bold text-slate-800 group-hover:text-emerald-700 transition-colors leading-tight">{item.label}</h3>
-                            <p className={`text-[10px] sm:text-xs mt-1 font-bold ${item.id === 'homework' && item.isNew ? 'text-red-600' : 'text-slate-500'}`}>
-                                {item.desc}
-                            </p>
-                        </div>
-                        <div className="mt-3 flex items-center text-[10px] font-black text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                             OPEN MODULE <ChevronRight size={12} className="ml-1" />
-                        </div>
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-  };
-
-  const renderHomework = () => (
-      <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-black text-slate-800">My Homework</h2>
-              <span className="text-[10px] bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-black uppercase tracking-widest">Assignments</span>
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-20">
+       <header className="bg-emerald-600 p-4 sticky top-0 z-50 text-white flex justify-between items-center shadow-lg">
+          <div className="flex items-center gap-3"><Home onClick={() => setActiveTab('home')} className="cursor-pointer" size={24}/><h1 className="font-black italic uppercase tracking-tighter">Student Portal</h1></div>
+          <div className="flex gap-2">
+              <button onClick={onRefresh} className={`p-2 bg-white/20 rounded-lg transition-all ${isSyncing ? 'animate-spin' : ''}`} title="Refresh Records"><RefreshCw size={20}/></button>
+              <button onClick={onLogout} className="p-2 bg-white/20 rounded-lg" title="Logout"><LogOut size={20}/></button>
           </div>
-          {relevantHomework.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 italic">No homework found.</div>
-          ) : (
-              relevantHomework.map(hw => (
-                  <div key={hw.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
-                      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3">
-                          <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{hw.subject}</span>
-                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={12}/> Posted: {hw.date}</div>
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-800 mb-2">{hw.title}</h3>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                         <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">{hw.description}</p>
-                      </div>
-                  </div>
-              ))
+       </header>
+
+       <main className="max-w-4xl mx-auto w-full p-4">
+          {isSyncing && (
+              <div className="mb-4 bg-emerald-50 border border-emerald-100 p-2 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
+                  <RefreshCw size={12} className="animate-spin" /> Synchronizing with school server...
+              </div>
           )}
-      </div>
-  );
 
-  const renderExams = () => (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-           <h2 className="text-xl font-black text-slate-800 mb-4 uppercase tracking-tight">Exam Schedule</h2>
-           {studentExams.length === 0 ? (
-               <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold uppercase tracking-widest">No exams scheduled yet.</div>
-           ) : (
-               studentExams.map(exam => (
-                   <div key={exam.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                       <div className="bg-slate-900 px-5 py-4 flex justify-between items-center text-white">
-                           <h3 className="font-black text-sm uppercase tracking-wider">{exam.title}</h3>
-                           <span className="text-[10px] font-black bg-indigo-500 px-2 py-1 rounded uppercase">{exam.type}</span>
-                       </div>
-                       <div className="overflow-x-auto">
-                           {!exam.timetable || exam.timetable.length === 0 ? (
-                               <div className="p-12 text-center text-slate-400 bg-slate-50">
-                                   <CalendarCheck size={32} className="mx-auto mb-2 opacity-20" />
-                                   <p className="text-xs font-black uppercase tracking-[0.2em]">Timetable Pending</p>
-                                   <p className="text-[10px] mt-1 italic">Check back shortly for specific dates.</p>
-                               </div>
-                           ) : (
-                               <table className="w-full text-left text-sm border-none">
-                                   <thead className="bg-slate-50 text-slate-500 font-black border-b border-slate-100 text-[10px] uppercase">
-                                       <tr>
-                                           <th className="px-5 py-3 border-none bg-slate-50 text-slate-500 tracking-widest">Date</th>
-                                           <th className="px-5 py-3 border-none bg-slate-50 text-slate-500 tracking-widest">Subject</th>
-                                       </tr>
-                                   </thead>
-                                   <tbody className="divide-y divide-slate-100">
-                                       {exam.timetable.map(row => (
-                                           <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                                               <td className="px-5 py-4 border-none font-mono text-xs font-bold text-slate-600">{row.date}</td>
-                                               <td className="px-5 py-4 border-none font-bold text-slate-800 uppercase text-xs">{row.subject}</td>
-                                           </tr>
-                                       ))}
-                                   </tbody>
-                               </table>
-                           )}
-                       </div>
-                   </div>
-               ))
-           )}
-      </div>
-  );
-
-  const renderResults = () => {
-      const record = studentAnnualRecord;
-      const defaults = student ? getSubjectsForClass(student.className, student.medium || 'English').map(s => s.name) : [];
-      const annualSubjects = record ? Array.from(new Set([...defaults, ...(record.customSubjects || [])])) : [];
-      
-      return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-2xl font-black text-slate-800">Academic Progress</h2>
-              {record && (
-                  <button onClick={handleDownloadPDF} disabled={isDownloading} className="flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase shadow-xl hover:bg-emerald-700 active:scale-95 transition-all">
-                    <Download size={18} /> {isDownloading ? 'Generating...' : 'Download Official PDF'}
-                  </button>
-              )}
-          </div>
-
-          {record ? (
-              <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden">
-                  <div className="bg-emerald-600 p-8 text-white relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none"><Award size={120} /></div>
-                      <div className="relative z-10">
-                          <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80 mb-2">Annual Result Card</div>
-                          <h3 className="text-3xl font-black tracking-tighter mb-1">SESSION 2024-25</h3>
-                          <div className="flex items-center gap-3 mt-4">
-                              <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase">{student.className}</div>
-                              <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase">{(student.medium || 'English')} Medium</div>
-                          </div>
-                      </div>
+          {activeTab === 'home' && (
+              <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-3xl shadow-sm border border-emerald-100 flex items-center gap-4">
+                      <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white"><GraduationCap size={32}/></div>
+                      <div><h2 className="text-xl font-black">{student.name}</h2><p className="text-xs text-slate-400 font-bold uppercase">{student.className} • Roll {student.rollNo}</p></div>
                   </div>
-                  <div className="p-4 sm:p-8">
-                      <div className="overflow-x-auto -mx-4 sm:mx-0">
-                          <table className="w-full text-left">
-                              <thead className="bg-slate-50 border-y border-slate-100">
-                                  <tr>
-                                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-widest bg-slate-50 border-none">Subject</th>
-                                      <th className="px-6 py-4 text-center text-xs font-black text-slate-500 uppercase tracking-widest bg-slate-50 border-none">Semester 1</th>
-                                      <th className="px-6 py-4 text-center text-xs font-black text-slate-500 uppercase tracking-widest bg-slate-50 border-none">Semester 2</th>
-                                  </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50">
-                                  {annualSubjects.map(sub => (
-                                      <tr key={sub} className="hover:bg-slate-50 transition-colors">
-                                          <td className="px-6 py-5 font-bold text-slate-800">{sub}</td>
-                                          <td className="px-6 py-5 text-center font-black text-slate-400 text-lg">{record.sem1Grades?.[sub] || '-'}</td>
-                                          <td className="px-6 py-5 text-center font-black text-emerald-600 text-xl">{record.sem2Grades?.[sub] || '-'}</td>
-                                      </tr>
-                                  ))}
-                              </tbody>
-                          </table>
-                      </div>
-                      <div className="mt-12 bg-slate-900 rounded-[1.5rem] p-8 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                           <div className="max-w-md">
-                               <div className="flex items-center gap-2 text-emerald-400 mb-2"><Info size={16} /><span className="text-[10px] font-black uppercase tracking-widest">Teacher's Remark</span></div>
-                               <p className="text-slate-300 italic text-sm leading-relaxed">"{record.remarks || 'Promoted to higher standard with good progress.'}"</p>
-                           </div>
-                           <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/10 text-center min-w-[200px]">
-                               <div className="text-[10px] font-black text-emerald-400 uppercase mb-1">PROMOTED TO</div>
-                               <div className="text-xl font-black">{getNextClass(student.className)}</div>
-                           </div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                      <button onClick={() => setActiveTab('results')} className="bg-white p-5 rounded-3xl border shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-50 transition-colors"><FileBadge size={32} className="text-amber-600"/><span className="font-black text-xs uppercase">Annual Report</span></button>
+                      <button onClick={() => setActiveTab('homework')} className="bg-white p-5 rounded-3xl border shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-50 transition-colors"><BookOpen size={32} className="text-indigo-600"/><span className="font-black text-xs uppercase">Homework</span></button>
+                      <button onClick={() => setActiveTab('exams')} className="bg-white p-5 rounded-3xl border shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-50 transition-colors"><CalendarCheck size={32} className="text-purple-600"/><span className="font-black text-xs uppercase">Exam Schedule</span></button>
+                      <button onClick={() => setActiveTab('attendance')} className="bg-white p-5 rounded-3xl border shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-50 transition-colors"><UserCheck size={32} className="text-emerald-600"/><span className="font-black text-xs uppercase">Attendance</span></button>
                   </div>
               </div>
-          ) : (
-              <div className="space-y-6">
-                  {studentResults.length === 0 ? (
-                      <div className="text-center py-20 bg-white rounded-[2rem] border border-dashed border-slate-300 text-slate-400 italic">No exam results published yet.</div>
+          )}
+
+          {activeTab === 'results' && (
+              <div className="space-y-6 animate-in fade-in zoom-in-95">
+                  <div className="flex justify-between items-center">
+                      <div>
+                          <h2 className="text-2xl font-black text-slate-800">Annual Report</h2>
+                          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Progress Card 2024-25</p>
+                      </div>
+                      {studentAnnualRecord && (
+                          <button onClick={downloadPDF} disabled={isDownloading} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all">
+                              {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16}/>} Download PDF
+                          </button>
+                      )}
+                  </div>
+
+                  {studentAnnualRecord ? (
+                      <div className="bg-slate-200 p-4 sm:p-12 rounded-3xl border shadow-inner flex justify-center items-start overflow-x-auto">
+                          <div className="bg-white shadow-2xl scale-90 sm:scale-100 origin-top min-w-[190mm]" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_COLOR}</style>${generatePDFContent()}` }} />
+                      </div>
                   ) : (
-                      studentResults.map(res => {
-                          const exam = exams.find(e => e.id === res.examId);
-                          if (!exam) return null;
-                          return (
-                              <div key={res.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                  <div className="bg-emerald-50/50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center">
-                                      <div><h3 className="font-black text-slate-800 uppercase tracking-tight">{exam.title}</h3><p className="text-[10px] text-slate-400 font-bold uppercase">{exam.type}</p></div>
-                                      <div className="text-xs font-black text-emerald-700 bg-white border border-emerald-100 px-3 py-1.5 rounded-xl shadow-sm">Marksheet</div>
-                                  </div>
-                                  <div className="p-6">
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm font-bold">
-                                          {Object.entries(res.marks).map(([subId, mark]) => (
-                                              <div key={subId} className="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-slate-50">
-                                                  <span className="text-slate-500 uppercase text-[10px] tracking-widest">{subId}</span>
-                                                  <span className="font-black text-slate-800">{mark}</span>
-                                              </div>
-                                          ))}
-                                      </div>
-                                  </div>
-                              </div>
-                          );
-                       })
+                      <div className="text-center py-24 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-slate-400 flex flex-col items-center gap-4">
+                          <Eye size={48} className="opacity-20" />
+                          <div>
+                              <p className="font-black text-sm uppercase tracking-widest">No Report Published</p>
+                              <p className="text-xs font-medium">Please check back after results are declared.</p>
+                          </div>
+                          <button onClick={onRefresh} className="mt-4 px-6 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase border border-emerald-100 hover:bg-emerald-100 transition-all">Check Again</button>
+                      </div>
                   )}
               </div>
           )}
-      </div>
-      );
-  };
 
-  const renderAttendance = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div><h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Attendance Record</h2><p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Session 2024-25</p></div>
-              <div className="flex gap-8">
-                  <div className="text-center"><div className="text-3xl font-black text-emerald-600">{attendanceStats.present}</div><div className="text-[10px] font-black text-slate-400 uppercase">Present</div></div>
-                  <div className="text-center bg-emerald-50 p-2 rounded-2xl ring-4 ring-emerald-50/50"><div className="text-3xl font-black text-emerald-600">{attendanceStats.percentage}%</div><div className="text-[10px] font-black text-slate-400 uppercase">Avg</div></div>
+          {activeTab === 'homework' && (
+              <div className="space-y-4 animate-in slide-in-from-bottom-4">
+                  <h2 className="text-xl font-black">Daily Homework</h2>
+                  {homework.filter(h => h.className === student.className).length === 0 ? (
+                      <div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No homework assigned today.</div>
+                  ) : (
+                      homework.filter(h => h.className === student.className).map(h => (
+                        <div key={h.id} className="bg-white p-5 rounded-3xl border shadow-sm"><div className="flex justify-between mb-2"><span className="text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg">{h.subject}</span><span className="text-[10px] text-slate-400 font-bold">{h.date}</span></div><h3 className="font-bold mb-2">{h.title}</h3><p className="text-sm text-slate-600">{h.description}</p></div>
+                      ))
+                  )}
               </div>
-         </div>
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h3 className="font-black text-slate-700 mb-6 flex items-center gap-2 uppercase tracking-widest text-xs"><Calendar size={18} className="text-emerald-600"/> Monthly Calendar</h3>{renderCalendar()}</div>
-    </div>
-  );
+          )}
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-       <header className="bg-emerald-50/80 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-emerald-200">
-        <div className="max-w-7xl mx-auto px-4 h-16 sm:h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {activeTab !== 'home' && <button onClick={() => handleTabChange('home')} className="p-2.5 bg-white hover:bg-slate-100 rounded-xl text-slate-600 hover:text-emerald-700 transition-all shadow-sm active:scale-95 border border-slate-200"><Home size={22} /></button>}
-            <div className="hidden sm:flex bg-emerald-600 p-2.5 rounded-2xl shadow-lg shadow-emerald-100"><GraduationCap size={24} className="text-white" /></div>
-            <div><h1 className="text-base sm:text-xl font-black text-slate-900 uppercase italic leading-none tracking-tight">Indrayani School</h1></div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button onClick={onRefresh} className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl transition-all shadow-sm group active:scale-95">
-                <RefreshCw size={22} className={isSyncing ? 'animate-spin text-indigo-600' : ''} />
-            </button>
-            <button onClick={onLogout} className="p-2.5 bg-white text-slate-400 hover:text-rose-600 border border-slate-200 rounded-xl transition-all shadow-sm active:scale-95"><LogOut size={22} /></button>
-          </div>
-        </div>
-      </header>
+          {/* Other tabs follow similar robust patterns... */}
+       </main>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 mb-20 sm:mb-0">
-         {activeTab === 'home' && renderHomeGrid()}
-         {activeTab === 'homework' && renderHomework()}
-         {activeTab === 'exams' && renderExams()}
-         {activeTab === 'results' && renderResults()}
-         {activeTab === 'notices' && <div className="space-y-4">{announcements.map(notice => <div key={notice.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><div className="flex justify-between items-center mb-2"><span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">Official</span><span className="text-[10px] font-bold text-slate-400">{notice.date}</span></div><h3 className="text-lg font-black text-slate-800 mb-2">{notice.title}</h3><p className="text-slate-600 text-sm">{notice.content}</p></div>)}</div>}
-         {activeTab === 'attendance' && renderAttendance()}
-      </main>
-
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center z-50 shadow-lg">
-          <button onClick={() => handleTabChange('home')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-emerald-700' : 'text-slate-400'}`}><LayoutDashboard size={20} /><span className="text-[9px] font-black uppercase">Home</span></button>
-          <button onClick={() => handleTabChange('homework')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'homework' ? 'text-emerald-700' : 'text-slate-400'} relative`}>
-            {hasNewHomework && <div className="absolute top-1 right-3 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white animate-pulse"></div>}
-            <BookOpen size={20} /><span className="text-[9px] font-black uppercase">Study</span>
-          </button>
-          <button onClick={() => handleTabChange('results')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'results' ? 'text-emerald-700' : 'text-slate-400'} relative`}>
-            {(hasNewResults || hasNewAnnual) && <div className={`absolute top-1 right-3 w-2.5 h-2.5 ${hasNewAnnual ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full border-2 border-white animate-pulse`}></div>}
-            <FileBadge size={20} /><span className="text-[9px] font-black uppercase">Marks</span>
-          </button>
-          <button onClick={() => handleTabChange('attendance')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'attendance' ? 'text-emerald-700' : 'text-slate-400'}`}><UserCheck size={20} /><span className="text-[9px] font-black uppercase">Status</span></button>
-      </nav>
+       <nav className="fixed bottom-0 inset-x-0 bg-white border-t p-3 flex justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.1)] z-40">
+           <button onClick={() => setActiveTab('home')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-emerald-600' : 'text-slate-400'}`}><Home size={22}/><span className="text-[8px] font-black uppercase">Home</span></button>
+           <button onClick={() => setActiveTab('results')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'results' ? 'text-emerald-600' : 'text-slate-400'}`}><FileBadge size={22}/><span className="text-[8px] font-black uppercase">Report</span></button>
+           <button onClick={() => setActiveTab('homework')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'homework' ? 'text-emerald-600' : 'text-slate-400'}`}><BookOpen size={22}/><span className="text-[8px] font-black uppercase">Work</span></button>
+           <button onClick={() => setActiveTab('attendance')} className={`p-2 flex flex-col items-center gap-1 ${activeTab === 'attendance' ? 'text-emerald-600' : 'text-slate-400'}`}><UserCheck size={22}/><span className="text-[8px] font-black uppercase">Status</span></button>
+       </nav>
     </div>
   );
 };

@@ -82,6 +82,12 @@ export interface AnnualRecord {
   improvements: string;
   improvementsSem1?: string;
   improvementsSem2?: string;
+  // New fields for Progress Card layout
+  specialImprovementsSem1?: string;
+  specialImprovementsSem2?: string;
+  necessaryImprovementSem1?: string;
+  necessaryImprovementSem2?: string;
+  resultStatus?: 'PASS' | 'FAIL' | '';
   customSubjects: string[];
   subjectOrder?: string[];
   medium?: 'English' | 'Semi';
@@ -177,13 +183,58 @@ export const SPECIFIC_CLASSES: ClassOption[] = [
 export const getSubjectsForClass = (className: string, medium: 'English' | 'Semi' = 'English'): Subject[] => {
   if (className === 'Alumni') return [];
 
-  if (['Nursery', 'Jr. KG', 'Sr. KG'].includes(className)) {
-     return [
-       { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
-       { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
-       { id: 'art', name: 'Art/Craft', maxMarks: 50, evaluationType: 'grade' },
-       { id: 'gk', name: 'G.K.', maxMarks: 50, evaluationType: 'marks' },
-     ];
+  // Logic for Nursery, Jr. KG, Sr. KG based on handwritten lists
+  if (className === 'Nursery') {
+    if (medium === 'English') {
+      return [
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    } else {
+      return [
+        { id: 'mar', name: 'Marathi', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    }
+  }
+
+  if (className === 'Jr. KG') {
+    if (medium === 'English') {
+      return [
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'evsgk', name: 'E.V.S / G.K.', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    } else {
+      return [
+        { id: 'mar', name: 'Marathi', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    }
+  }
+
+  if (className === 'Sr. KG') {
+    if (medium === 'English') {
+      return [
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'gkevs', name: 'G.K. / E.V.S.', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    } else {
+      return [
+        { id: 'eng', name: 'English', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Maths', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'mar', name: 'Marathi', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'drw', name: 'Drawing', maxMarks: 50, evaluationType: 'grade' },
+      ];
+    }
   }
   
   if (className.startsWith('Class ')) {

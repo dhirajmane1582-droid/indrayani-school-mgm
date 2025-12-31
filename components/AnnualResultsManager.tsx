@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Student, AnnualRecord, SPECIFIC_CLASSES, getSubjectsForClass, Exam, CustomFieldDefinition } from '../types';
-import { Save, ChevronLeft, ChevronRight, Search, CheckCircle2, AlertCircle, CheckSquare, Square, FileText, X, ArrowLeft, ArrowRight, Printer, Download, Settings, Plus, Trash2, Eye, Share2, Edit3, Upload } from 'lucide-react';
+import { ChevronLeft, Search, CheckCircle2, FileText, X, Download, Eye, Edit3, Loader2, AlertTriangle, Printer, RefreshCw, CheckSquare, Square, Globe, GlobeLock } from 'lucide-react';
+import { dbService } from '../services/db';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -16,49 +17,56 @@ interface AnnualResultsManagerProps {
 }
 
 const PDF_STYLES = `
-    .report-wrapper {
-        background-color: #fff;
-        padding: 10mm;
-    }
+    .report-wrapper { background-color: #fff; padding: 0; margin: 0; }
     .report-page { 
-        font-family: 'Times New Roman', serif; 
-        padding: 15mm; 
+        font-family: 'Inter', sans-serif; 
+        padding: 10mm; 
         width: 190mm; 
-        min-height: 267mm; 
+        min-height: 270mm; 
         box-sizing: border-box; 
         color: #000;
         background: #fff;
-        border: 2px solid #000;
-        margin: auto;
+        border: 1px solid #000;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        position: relative;
     }
-    .header { text-align: center; margin-bottom: 20px; border-bottom: 1.5px solid #000; padding-bottom: 15px; }
-    .trust-name { font-size: 14px; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; color: #000; letter-spacing: 0.5px; }
-    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; margin-bottom: 6px; color: #000; }
-    .address { font-size: 11px; margin-bottom: 2px; color: #000; font-weight: bold; }
-    .contact { font-size: 11px; margin-bottom: 10px; color: #000; font-weight: bold; }
-    .report-title { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-top: 15px; color: #000; border: 1px solid #000; display: inline-block; padding: 4px 20px; }
+    .header { text-align: center; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+    .trust-name { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; color: #000; }
+    .school-name { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #000; }
+    .udise { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
+    .address { font-size: 8px; margin-bottom: 2px; font-weight: bold; text-transform: uppercase; }
+    .progress-card-title { font-size: 12px; font-weight: bold; margin-top: 5px; text-transform: uppercase; text-decoration: underline; }
     
-    .student-info { margin-bottom: 25px; border: 1px solid #000; padding: 12px; }
-    .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-    .field-pair { display: flex; gap: 8px; min-width: 48%; }
-    .label { font-weight: bold; font-size: 13px; color: #000; }
-    .value { font-size: 13px; border-bottom: 1px dotted #000; flex: 1; color: #000; }
-    .value.bold { font-weight: bold; }
+    .student-info { margin-top: 10px; margin-bottom: 15px; font-size: 11px; }
+    .info-line { display: flex; margin-bottom: 4px; }
+    .info-label { font-weight: bold; width: 130px; }
+    .info-value { border-bottom: 1px solid #000; flex: 1; padding-left: 5px; font-weight: bold; }
 
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-    th, td { border: 1px solid #000; padding: 8px 4px; text-align: center; color: #000; }
-    th { background-color: #eee; font-weight: bold; text-transform: uppercase; font-size: 11px; }
-    .subject-cell { text-align: left; padding-left: 10px; font-weight: bold; }
+    .tables-container { display: flex; gap: 10px; margin-bottom: 15px; }
+    .semester-table-box { flex: 1; }
+    .table-title { font-weight: bold; text-align: center; border: 1px solid #000; border-bottom: 0; padding: 3px; font-size: 10px; text-transform: uppercase; background: #f0f0f0; }
     
-    .section-header { font-weight: bold; font-size: 13px; margin-bottom: 6px; text-transform: uppercase; color: #000; text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: center; color: #000; }
+    th { font-weight: bold; text-transform: uppercase; font-size: 9px; }
+    .subject-cell { text-align: left; padding-left: 5px; font-weight: bold; }
     
-    .footer-info { margin-top: 20px; }
-    .remarks-section { margin-bottom: 15px; }
-    .remark-box { border: 1px solid #000; padding: 10px; min-height: 40px; margin-top: 5px; font-size: 13px; }
-    .promotion-box { text-align: center; margin: 20px 0; font-size: 15px; font-weight: bold; }
+    .remarks-container { border: 1px solid #000; border-top: 0; margin-bottom: 15px; }
+    .remarks-header-row { display: flex; background: #eee; border-top: 1px solid #000; }
+    .remarks-col { flex: 1; border-right: 1px solid #000; font-weight: bold; padding: 3px; font-size: 9px; text-align: center; text-transform: uppercase; }
+    .remarks-col:last-child { border-right: 0; }
+    .remarks-data-row { display: flex; border-top: 1px solid #000; min-height: 45px; }
+    .remarks-cell { flex: 1; border-right: 1px solid #000; padding: 4px; font-size: 9px; word-break: break-word; }
+    .remarks-cell:last-child { border-right: 0; }
+    .desc-remarks-title { font-weight: bold; text-align: center; border: 1px solid #000; padding: 3px; font-size: 10px; text-transform: uppercase; background: #eee; }
 
-    .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
-    .sig-box { text-align: center; border-top: 1.5px solid #000; width: 30%; padding-top: 6px; font-size: 13px; font-weight: bold; color: #000; }
+    .grade-key { margin-bottom: 15px; }
+    .result-footer { text-align: center; margin-top: auto; font-size: 11px; }
+    .result-line { font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 25px; }
+    .sig-box { text-align: center; border-top: 1px solid #000; width: 130px; padding-top: 4px; font-size: 10px; font-weight: bold; }
 `;
 
 const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
@@ -72,776 +80,454 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
 }) => {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isManageSubjectsOpen, setIsManageSubjectsOpen] = useState(false);
-  
   const [previewData, setPreviewData] = useState<{student: Student, record: AnnualRecord} | null>(null);
-  
-  const [reportConfig, setReportConfig] = useState<{
-      showCustomFields: string[];
-  }>(() => {
-      const saved = localStorage.getItem('et_report_config');
-      return saved ? JSON.parse(saved) : { showCustomFields: [] };
-  });
-
-  const [newSubInModal, setNewSubInModal] = useState('');
-
-  const toggleReportField = (id: string) => {
-      setReportConfig(prev => {
-          const newFields = prev.showCustomFields.includes(id) 
-            ? prev.showCustomFields.filter(f => f !== id)
-            : [...prev.showCustomFields, id];
-          const newConfig = { ...prev, showCustomFields: newFields };
-          localStorage.setItem('et_report_config', JSON.stringify(newConfig));
-          return newConfig;
-      });
-  };
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
   const filteredStudents = useMemo(() => {
     if (!selectedClass) return [];
     const [className, medium] = selectedClass.split('|');
     let list = students.filter(s => s.className === className && (s.medium || 'English') === medium);
-    
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
         list = list.filter(s => s.name.toLowerCase().includes(q) || s.rollNo.toLowerCase().includes(q));
     }
-    
-    return list.sort((a, b) => {
-        const ra = parseInt(a.rollNo) || 0;
-        const rb = parseInt(b.rollNo) || 0;
-        return ra - rb;
-    });
+    return list.sort((a, b) => (parseInt(a.rollNo) || 0) - (parseInt(b.rollNo) || 0));
   }, [students, selectedClass, searchQuery]);
 
   const editingStudent = useMemo(() => {
-    return filteredStudents.find(s => s.id === editingStudentId) || students.find(s => s.id === editingStudentId) || null;
-  }, [filteredStudents, students, editingStudentId]);
-
-  const handleNavigate = (direction: 'prev' | 'next') => {
-    if (!editingStudentId) return;
-    const currentIndex = filteredStudents.findIndex(s => s.id === editingStudentId);
-    if (currentIndex === -1) return;
-
-    if (direction === 'prev' && currentIndex > 0) {
-        setEditingStudentId(filteredStudents[currentIndex - 1].id);
-    } else if (direction === 'next' && currentIndex < filteredStudents.length - 1) {
-        setEditingStudentId(filteredStudents[currentIndex + 1].id);
-    }
-  };
-
-  const defaultSubjects = useMemo(() => {
-    if (!selectedClass) return [];
-    const [className, medium] = selectedClass.split('|');
-    return getSubjectsForClass(className, medium as 'English' | 'Semi');
-  }, [selectedClass]);
+    return students.find(s => s.id === editingStudentId) || null;
+  }, [students, editingStudentId]);
 
   const getRecord = (studentId: string) => {
       return annualRecords.find(r => r.studentId === studentId) || {
-        studentId,
-        academicYear: '2024-2025',
-        grades: {},
-        sem1Grades: {},
-        sem2Grades: {},
-        remarks: '',
-        hobbies: '',
-        hobbiesSem1: '',
-        hobbiesSem2: '',
-        improvements: '',
-        improvementsSem1: '',
-        improvementsSem2: '',
-        customSubjects: [],
-        published: false
+        studentId, academicYear: '2024-25', grades: {}, sem1Grades: {}, sem2Grades: {}, remarks: '',
+        hobbies: '', hobbiesSem1: '', hobbiesSem2: '', improvements: '', improvementsSem1: '', improvementsSem2: '',
+        specialImprovementsSem1: '', specialImprovementsSem2: '', necessaryImprovementSem1: '', necessaryImprovementSem2: '',
+        resultStatus: 'PASS', customSubjects: [], published: false
       };
-  };
-
-  const getStudentSubjects = (record: AnnualRecord) => {
-      const defaults = defaultSubjects.map(s => s.name);
-      if (!record.customSubjects || record.customSubjects.length === 0) return defaults;
-      return record.customSubjects;
   };
 
   const handleRecordChange = (studentId: string, field: keyof AnnualRecord, value: any, nestedKey?: string) => {
       setAnnualRecords(prev => {
-          const existingIndex = prev.findIndex(r => r.studentId === studentId);
-          let currentRecord = existingIndex >= 0 ? prev[existingIndex] : getRecord(studentId);
-          
-          let updatedRecord = { ...currentRecord };
-
+          const idx = prev.findIndex(r => r.studentId === studentId);
+          let rec = idx >= 0 ? { ...prev[idx] } : { ...getRecord(studentId) };
           if (nestedKey) {
              // @ts-ignore
-             updatedRecord[field] = { ...updatedRecord[field], [nestedKey]: value };
+             rec[field] = { ...rec[field], [nestedKey]: value };
           } else {
              // @ts-ignore
-             updatedRecord[field] = value;
+             rec[field] = value;
           }
-
-          if (existingIndex >= 0) {
-              const newArr = [...prev];
-              newArr[existingIndex] = updatedRecord;
-              return newArr;
-          }
-          return [...prev, updatedRecord];
-      });
-  };
-
-  const toggleSubject = (studentId: string, subjectName: string) => {
-      setAnnualRecords(prev => {
-          const idx = prev.findIndex(r => r.studentId === studentId);
-          let record = idx >= 0 ? prev[idx] : getRecord(studentId);
-          
-          let currentActive = record.customSubjects && record.customSubjects.length > 0 
-            ? record.customSubjects 
-            : defaultSubjects.map(s => s.name);
-          
-          let newActive;
-          if (currentActive.includes(subjectName)) {
-              newActive = currentActive.filter(s => s !== subjectName);
+          const newArr = [...prev];
+          if (idx >= 0) {
+              newArr[idx] = rec;
           } else {
-              newActive = [...currentActive, subjectName];
+              newArr.push(rec);
           }
-          
-          const updatedRecord = { ...record, customSubjects: newActive };
-          
-          if (idx >= 0) {
-              const newArr = [...prev];
-              newArr[idx] = updatedRecord;
-              return newArr;
-          }
-          return [...prev, updatedRecord];
+          return newArr;
       });
   };
 
-  const addCustomSubjectInModal = (studentId: string) => {
-      const sub = newSubInModal.trim();
-      if (!sub) return;
+  const handleBulkPublish = async (pub: boolean) => {
+      if (selectedStudentIds.size === 0) {
+          alert("Please select students first.");
+          return;
+      }
       
-      setAnnualRecords(prev => {
-          const idx = prev.findIndex(r => r.studentId === studentId);
-          let record = idx >= 0 ? prev[idx] : getRecord(studentId);
-          
-          let currentActive = record.customSubjects && record.customSubjects.length > 0 
-            ? record.customSubjects 
-            : defaultSubjects.map(s => s.name);
-          
-          if (!currentActive.includes(sub)) {
-              currentActive = [...currentActive, sub];
-          }
-          
-          const updatedRecord = { ...record, customSubjects: currentActive };
-          
+      setIsSyncing(true);
+      const updatedRecords = [...annualRecords];
+      
+      selectedStudentIds.forEach(sid => {
+          const idx = updatedRecords.findIndex(r => r.studentId === sid);
           if (idx >= 0) {
-              const newArr = [...prev];
-              newArr[idx] = updatedRecord;
-              return newArr;
+              updatedRecords[idx] = { ...updatedRecords[idx], published: pub };
+          } else {
+              updatedRecords.push({
+                  ...getRecord(sid),
+                  published: pub
+              });
           }
-          return [...prev, updatedRecord];
       });
-      setNewSubInModal('');
+
+      setAnnualRecords(updatedRecords);
+      try {
+          await dbService.putAll('annualRecords', updatedRecords);
+          setSelectedStudentIds(new Set());
+      } finally {
+          setIsSyncing(false);
+      }
   };
 
-  const handlePublishAll = (publish: boolean) => {
-      if(window.confirm(`Are you sure you want to ${publish ? 'Publish' : 'Unpublish'} results for all ${filteredStudents.length} students?`)) {
-          const studentIds = new Set(filteredStudents.map(s => s.id));
-          setAnnualRecords(prev => {
-              const newRecords = [...prev];
-              newRecords.forEach((r, i) => {
-                  if (studentIds.has(r.studentId)) {
-                      newRecords[i] = { ...r, published: publish };
-                  }
-              });
-              filteredStudents.forEach(s => {
-                  if (!newRecords.find(r => r.studentId === s.id)) {
-                      newRecords.push({ ...getRecord(s.id), published: publish });
-                  }
-              });
-              return newRecords;
-          });
-          setShowSaveSuccess(true);
-          setTimeout(() => setShowSaveSuccess(false), 2000);
+  const toggleStudentSelection = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const newSelection = new Set(selectedStudentIds);
+    if (newSelection.has(id)) newSelection.delete(id);
+    else newSelection.add(id);
+    setSelectedStudentIds(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudentIds.size === filteredStudents.length) {
+        setSelectedStudentIds(new Set());
+    } else {
+        setSelectedStudentIds(new Set(filteredStudents.map(s => s.id)));
+    }
+  };
+
+  const handleManualSync = async () => {
+      setIsSyncing(true);
+      try {
+          // Explicitly push everything to cloud
+          await dbService.putAll('annualRecords', annualRecords);
+      } finally {
+          setIsSyncing(false);
       }
   };
 
   const generatePDFContent = (student: Student, record: AnnualRecord) => {
-      const [cls, med] = selectedClass.split('|');
-      const subjects = getStudentSubjects(record);
+      const className = student.className;
+      const medium = student.medium || 'English';
       
-      const nextClass = cls.startsWith('Class ') 
-        ? `Class ${parseInt(cls.replace('Class ', '')) + 1}` 
-        : cls === 'Nursery' ? 'Jr. KG' 
-        : cls === 'Jr. KG' ? 'Sr. KG' 
-        : cls === 'Sr. KG' ? 'Class 1' 
-        : 'Next Standard';
-
-      const schoolName = med === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
-      const address = "Sector 18, Plot No. 23, 24, 25, 26, Koparkhairane, Navi Mumbai 400709.";
-      const phone = "Ph No. 8425919111 / 8422019111";
-      const trustName = "SHREE GANESH EDUCATION ACADEMY";
+      const subjects = Array.from(new Set([
+        ...getSubjectsForClass(className, medium as 'English' | 'Semi').map(s => s.name), 
+        ...(record.customSubjects || [])
+      ]));
       
-      let customFieldsHTML = '';
-      reportConfig.showCustomFields.forEach(fid => {
-          const def = customFieldDefs.find(d => d.id === fid);
-          const val = student.customFields?.[fid] || '-';
-          if (def) {
-              customFieldsHTML += `<div class="field-pair"><span class="label">${def.label}:</span> <span class="value">${val}</span></div>`;
-          }
-      });
+      const schoolName = medium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
+      const address = "SECTOR 18, NEAR GARDEN, KOPARKHAIRANE, NAVI MUMBAI";
+      const nextClass = className.startsWith('Class ') ? `Class ${parseInt(className.replace('Class ', '')) + 1}` : className === 'Sr. KG' ? 'Class 1' : 'Next Grade';
 
-      const rows = subjects.map(sub => `
-        <tr>
-            <td class="subject-cell">${sub}</td>
-            <td>${record.sem1Grades?.[sub] || '-'}</td>
-            <td>${record.sem2Grades?.[sub] || '-'}</td>
-        </tr>
-      `).join('');
+      const subjectRows1 = subjects.map((sub, i) => `<tr><td>${i+1}</td><td class="subject-cell">${sub}</td><td>${record.sem1Grades?.[sub] || ''}</td></tr>`).join('');
+      const subjectRows2 = subjects.map((sub, i) => `<tr><td>${i+1}</td><td class="subject-cell">${sub}</td><td>${record.sem2Grades?.[sub] || ''}</td></tr>`).join('');
 
       return `
         <div class="report-page">
             <div class="header">
-                <div class="trust-name">${trustName}</div>
+                <div class="trust-name">SHREE GANESH EDUCATION ACADEMY'S</div>
                 <div class="school-name">${schoolName}</div>
+                <div class="udise">UDISE :- PRI : 27211003415, SEC : 27211003417</div>
                 <div class="address">${address}</div>
-                <div class="contact">${phone}</div>
-                <div class="report-title">ANNUAL PROGRESS REPORT (2024-25)</div>
+                <div class="progress-card-title">PROGRESS CARD 2024-25</div>
             </div>
-            
+
             <div class="student-info">
-                <div class="info-row">
-                    <div class="field-pair"><span class="label">NAME:</span> <span class="value bold">${student.name.toUpperCase()}</span></div>
-                    <div class="field-pair"><span class="label">ROLL NO:</span> <span class="value">${student.rollNo}</span></div>
+                <div class="info-line"><span class="info-label">Name of the Student :</span><span class="info-value">${student.name.toUpperCase()}</span></div>
+                <div class="info-line"><span class="info-label">Standard :</span><span class="info-value">${student.className}</span></div>
+                <div class="info-line"><span class="info-label">Roll no :</span><span class="info-value">${student.rollNo}</span></div>
+                <div class="info-line"><span class="info-label">DOB :</span><span class="info-value">${student.dob}</span></div>
+            </div>
+
+            <div class="tables-container">
+                <div class="semester-table-box">
+                    <div class="table-title">First Semester</div>
+                    <table>
+                        <thead><tr><th style="width:30px;">Sr.no</th><th>Subject</th><th style="width:60px;">Grade</th></tr></thead>
+                        <tbody>${subjectRows1}</tbody>
+                    </table>
                 </div>
-                <div class="info-row">
-                    <div class="field-pair"><span class="label">CLASS:</span> <span class="value">${student.className.toUpperCase()}</span></div>
-                    <div class="field-pair"><span class="label">MEDIUM:</span> <span class="value">${(student.medium || 'English').toUpperCase()}</span></div>
-                </div>
-                <div class="info-row">
-                   ${customFieldsHTML}
+                <div class="semester-table-box">
+                    <div class="table-title">Second Semester</div>
+                    <table>
+                        <thead><tr><th style="width:30px;">Sr.no</th><th>Subject</th><th style="width:60px;">Grade</th></tr></thead>
+                        <tbody>${subjectRows2}</tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="academic-section">
-                <div class="section-header">Academic Performance</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 50%;">Subject</th>
-                            <th>Semester 1</th>
-                            <th>Semester 2</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="coscholastic-section">
-                <div class="section-header">Co-Scholastic & Personal Development</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width: 50%;">Area of Evaluation</th>
-                            <th>Semester 1</th>
-                            <th>Semester 2</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="subject-cell">Hobbies & Interests</td>
-                            <td>${record.hobbiesSem1 || '-'}</td>
-                            <td>${record.hobbiesSem2 || '-'}</td>
-                        </tr>
-                         <tr>
-                            <td class="subject-cell">Areas of Improvement</td>
-                            <td>${record.improvementsSem1 || '-'}</td>
-                            <td>${record.improvementsSem2 || '-'}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="footer-info">
-                <div class="remarks-section">
-                    <span class="label">Class Teacher's Remarks:</span>
-                    <div class="remark-box">${record.remarks || 'Satisfactory progress shown throughout the academic year.'}</div>
+            <div class="desc-remarks-title">Descriptive Remarks</div>
+            <div class="remarks-container">
+                <div class="remarks-header-row">
+                    <div class="remarks-col">First Semester</div>
+                    <div class="remarks-col">Second Semester</div>
                 </div>
-                <div class="promotion-box">
-                    PROMOTED TO: ${nextClass.toUpperCase()}
+                <div class="remarks-header-row">
+                    <div class="remarks-col" style="font-size:7px;">Special Improvements</div>
+                    <div class="remarks-col" style="font-size:7px;">Hobbies</div>
+                    <div class="remarks-col" style="font-size:7px;">Necessary Imp.</div>
+                    <div class="remarks-col" style="font-size:7px;">Special Improvements</div>
+                    <div class="remarks-col" style="font-size:7px;">Hobbies</div>
+                    <div class="remarks-col" style="font-size:7px;">Necessary Imp.</div>
+                </div>
+                <div class="remarks-data-row">
+                    <div class="remarks-cell">${record.specialImprovementsSem1 || ''}</div>
+                    <div class="remarks-cell">${record.hobbiesSem1 || ''}</div>
+                    <div class="remarks-cell">${record.necessaryImprovementSem1 || ''}</div>
+                    <div class="remarks-cell">${record.specialImprovementsSem2 || ''}</div>
+                    <div class="remarks-cell">${record.hobbiesSem2 || ''}</div>
+                    <div class="remarks-cell">${record.necessaryImprovementSem2 || ''}</div>
                 </div>
             </div>
 
-            <div class="signatures">
-                <div class="sig-box">Class Teacher</div>
-                <div class="sig-box">Principal</div>
-                <div class="sig-box">Parent</div>
+            <div class="grade-key">
+                <div style="font-size:9px; font-weight:bold; margin-bottom:3px;">Grade Key: A1(91%+), A2(81-90%), B1(71-80%), B2(61-70%), C1(51-60%), C2(41-50%), D(33-40%), E(<33%)</div>
+            </div>
+
+            <div class="result-footer">
+                <div class="result-line">RESULT : ${record.resultStatus || 'PASS'}</div>
+                <div class="result-line">NEXT YEAR STANDARD : ${nextClass}</div>
+                <div class="result-line">SCHOOL WILL REOPEN : 11th JUNE 2025</div>
+                
+                <div class="signatures">
+                    <div class="sig-box">TEACHER'S SIGN</div>
+                    <div class="sig-box">PRINCIPAL'S SIGN</div>
+                </div>
             </div>
         </div>
       `;
   };
 
   const downloadPDF = async (student: Student, record: AnnualRecord) => {
-      // Robust library resolution for html2pdf
-      const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
-      if (typeof exporter !== 'function') {
-          console.error("html2pdf library could not be resolved.");
-          alert("PDF library failed to load.");
+      setIsGenerating(true);
+      const h2p = (window as any).html2pdf || html2pdf;
+      if (!h2p) {
+          alert("PDF Library not found.");
+          setIsGenerating(false);
           return;
       }
-
-      const content = generatePDFContent(student, record);
+      
+      const lib = h2p.default || h2p;
       const element = document.createElement('div');
-      element.className = "report-wrapper";
-      element.innerHTML = `<style>${PDF_STYLES}</style>${content}`;
-
-      const opt = {
-          margin: 0,
-          filename: `${student.name.replace(/\s+/g, '_')}_ReportCard.pdf`,
-          image: { type: 'jpeg' as const, quality: 1.0 },
-          html2canvas: { scale: 3 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
+      element.innerHTML = `<style>${PDF_STYLES}</style>${generatePDFContent(student, record)}`;
+      
+      const opt = { 
+          margin: 0, 
+          filename: `${student.name.replace(/\s+/g, '_')}_ProgressCard.pdf`, 
+          image: { type: 'jpeg', quality: 0.98 }, 
+          html2canvas: { scale: 3, useCORS: true }, 
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
       };
-
+      
       try {
-          const worker = exporter();
-          if (worker && typeof worker.set === 'function') {
-            await worker.set(opt).from(element).save();
-          } else {
-            await exporter(element, opt);
-          }
+          await lib().set(opt).from(element).save();
       } catch (err) {
-          console.error("PDF Download Error:", err);
-          alert("Failed to download PDF.");
-      }
-  };
-
-  const downloadClassPDF = async () => {
-      const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
-      if (typeof exporter !== 'function') return;
-
-      if (!window.confirm(`Generate PDF for all ${filteredStudents.length} students? This may take a moment.`)) return;
-
-      const element = document.createElement('div');
-      element.className = "report-wrapper";
-      element.innerHTML = `<style>${PDF_STYLES}.report-page { page-break-after: always; margin-bottom: 20mm; }</style>`;
-
-      filteredStudents.forEach(student => {
-          const record = getRecord(student.id);
-          element.innerHTML += generatePDFContent(student, record);
-      });
-
-      const opt = {
-          margin: 0,
-          filename: `${selectedClass.replace('|','_')}_All_Reports.pdf`,
-          image: { type: 'jpeg' as const, quality: 1.0 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-      };
-
-      try {
-          const worker = exporter();
-          if (worker && typeof worker.set === 'function') {
-            await worker.set(opt).from(element).save();
-          } else {
-            await exporter(element, opt);
-          }
-      } catch (err) {
-          console.error("Bulk PDF Download Error:", err);
-          alert("Failed to download bulk PDF.");
+          console.error("PDF generation failed:", err);
+          alert("Export failed. Please try again.");
+      } finally {
+          setIsGenerating(false);
       }
   };
 
   if (editingStudent) {
-      const record = getRecord(editingStudent.id);
-      const currentIndex = filteredStudents.findIndex(s => s.id === editingStudent.id);
-      const isFirst = currentIndex === 0;
-      const isLast = currentIndex === filteredStudents.length - 1;
+    const record = getRecord(editingStudent.id);
+    const subjects = Array.from(new Set([...getSubjectsForClass(editingStudent.className, (editingStudent.medium || 'English') as 'English' | 'Semi').map(s => s.name), ...(record.customSubjects || [])]));
+    return (
+        <div className="bg-white min-h-screen flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="sticky top-0 z-50 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingStudentId(null)} className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors"><ChevronLeft size={24} /></button>
+                    <div><h3 className="font-bold text-slate-900">{editingStudent.name}</h3><p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Standard: {editingStudent.className} • Roll: {editingStudent.rollNo}</p></div>
+                </div>
+                <div className="flex gap-2">
+                    <button onClick={() => setPreviewData({ student: editingStudent, record })} className="p-2 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-all" title="Preview Card"><Eye size={20} /></button>
+                    <button onClick={() => downloadPDF(editingStudent, record)} disabled={isGenerating} className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-all disabled:opacity-50" title="Download Card">
+                        {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+                    </button>
+                </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-5xl mx-auto w-full">
+                <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                    <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Academic Grades</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {subjects.map(sub => (
+                            <div key={sub} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:border-indigo-200 transition-all">
+                                <div className="font-black text-slate-700 text-xs uppercase mb-3 truncate">{sub}</div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 1 Grade</label>
+                                        <input 
+                                            type="text" 
+                                            value={record.sem1Grades?.[sub] || ''} 
+                                            onChange={(e) => handleRecordChange(editingStudent.id, 'sem1Grades', e.target.value, sub)} 
+                                            className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all shadow-sm"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 2 Grade</label>
+                                        <input 
+                                            type="text" 
+                                            value={record.sem2Grades?.[sub] || ''} 
+                                            onChange={(e) => handleRecordChange(editingStudent.id, 'sem2Grades', e.target.value, sub)} 
+                                            className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-50 outline-none transition-all shadow-sm"
+                                            placeholder="-"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
 
-      const currentSubjects = getStudentSubjects(record);
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                        <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Descriptive Remarks (Sem 1)</h4>
+                        <div className="space-y-4">
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Special Improvements</label><textarea value={record.specialImprovementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Enter observations..." /></div>
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Hobbies</label><textarea value={record.hobbiesSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Enter interests..." /></div>
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Necessary Improvement</label><textarea value={record.necessaryImprovementSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Target areas..." /></div>
+                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                        <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Descriptive Remarks (Sem 2)</h4>
+                        <div className="space-y-4">
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Special Improvements</label><textarea value={record.specialImprovementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Enter observations..." /></div>
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Hobbies</label><textarea value={record.hobbiesSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Enter interests..." /></div>
+                            <div><label className="text-[10px] font-black text-slate-500 uppercase mb-1.5 block">Necessary Improvement</label><textarea value={record.necessaryImprovementSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="Target areas..." /></div>
+                        </div>
+                    </div>
+                </section>
 
-      return (
-          <div className="bg-white min-h-screen sm:min-h-0 sm:rounded-xl shadow-xl border border-slate-200 flex flex-col animate-in slide-in-from-right duration-300 fixed inset-0 z-50 sm:relative sm:inset-auto sm:z-0">
-              <div className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => setEditingStudentId(null)}
-                        className="p-2 -ml-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors"
-                      >
-                          <ChevronLeft size={24} />
-                      </button>
-                      <div>
-                          <h3 className="font-bold text-slate-800 leading-tight">{editingStudent.name}</h3>
-                          <div className="text-xs text-slate-500">Roll No: {editingStudent.rollNo} • {editingStudent.className}</div>
-                      </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                       <button 
-                          onClick={() => setPreviewData({ student: editingStudent, record })} 
-                          className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"
-                          title="Preview PDF"
+                <section className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 shadow-xl border border-slate-800">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-2">Academic Standing</label>
+                        <select 
+                            value={record.resultStatus} 
+                            onChange={(e) => handleRecordChange(editingStudent.id, 'resultStatus', e.target.value)} 
+                            className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 font-black text-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                         >
-                           <Eye size={20} />
-                       </button>
-                       <button 
-                          onClick={() => downloadPDF(editingStudent, record)} 
-                          className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"
-                          title="Download PDF"
-                        >
-                           <Upload size={20} />
-                       </button>
-                       <div className="text-xs font-medium text-slate-400 hidden sm:block">
-                           {currentIndex + 1} of {filteredStudents.length}
-                       </div>
-                  </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
-                  <div className="max-w-3xl mx-auto space-y-6">
-                      <div className="space-y-4">
-                          <div className="flex justify-between items-end">
-                              <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Subject Grades</h4>
-                              <button 
-                                onClick={() => setIsManageSubjectsOpen(true)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all text-xs font-bold shadow-sm"
-                              >
-                                <Edit3 size={14} /> Manage Subjects
-                              </button>
-                          </div>
-                          
-                          {currentSubjects.map(sub => (
-                              <div key={sub} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative group">
-                                  <div className="flex justify-between items-center mb-3">
-                                      <span className="font-bold text-slate-800">{sub}</span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                          <label className="block text-xs font-semibold text-slate-500 mb-1">Semester 1</label>
-                                          <input 
-                                              type="text" 
-                                              value={record.sem1Grades?.[sub] || ''}
-                                              onChange={(e) => handleRecordChange(editingStudent.id, 'sem1Grades', e.target.value, sub)}
-                                              className="w-full text-center font-bold text-slate-800 bg-white border border-slate-300 rounded-lg py-2.5 px-3 focus:border-indigo-500 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
-                                              placeholder="-"
-                                          />
-                                      </div>
-                                      <div>
-                                          <label className="block text-xs font-semibold text-slate-500 mb-1">Semester 2</label>
-                                          <input 
-                                              type="text" 
-                                              value={record.sem2Grades?.[sub] || ''}
-                                              onChange={(e) => handleRecordChange(editingStudent.id, 'sem2Grades', e.target.value, sub)}
-                                              className="w-full text-center font-bold text-slate-800 bg-white border border-slate-300 rounded-lg py-2.5 px-3 focus:border-indigo-500 outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
-                                              placeholder="-"
-                                          />
-                                      </div>
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-
-                      <div className="space-y-4">
-                          <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Co-Scholastic & Remarks</h4>
-                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                      <label className="block text-xs font-semibold text-slate-500 mb-1">Hobbies (Sem 1)</label>
-                                      <textarea value={record.hobbiesSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem1', e.target.value)} className="w-full bg-white border border-slate-300 p-2 rounded text-sm text-slate-900"/>
-                                  </div>
-                                  <div>
-                                      <label className="block text-xs font-semibold text-slate-500 mb-1">Hobbies (Sem 2)</label>
-                                      <textarea value={record.hobbiesSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem2', e.target.value)} className="w-full bg-white border border-slate-300 p-2 rounded text-sm text-slate-900"/>
-                                  </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                      <label className="block text-xs font-semibold text-slate-500 mb-1">Improvement (Sem 1)</label>
-                                      <textarea value={record.improvementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'improvementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 p-2 rounded text-sm text-slate-900"/>
-                                  </div>
-                                  <div>
-                                      <label className="block text-xs font-semibold text-slate-500 mb-1">Improvement (Sem 2)</label>
-                                      <textarea value={record.improvementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'improvementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 p-2 rounded text-sm text-slate-900"/>
-                                  </div>
-                              </div>
-                              <div>
-                                  <label className="block text-xs font-semibold text-slate-500 mb-2">Teacher's Remarks</label>
-                                  <textarea 
-                                      value={record.remarks}
-                                      onChange={(e) => handleRecordChange(editingStudent.id, 'remarks', e.target.value)}
-                                      className="w-full bg-white border border-slate-300 rounded-lg p-3 text-sm focus:border-indigo-500 outline-none focus:ring-2 focus:ring-indigo-100 min-h-[80px]"
-                                      placeholder="Annual remarks..."
-                                  />
-                              </div>
-                          </div>
-                      </div>
-
-                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-700">Publish Result</span>
-                          <button 
-                              onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${record.published ? 'bg-emerald-500' : 'bg-slate-200'}`}
-                          >
-                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${record.published ? 'translate-x-6' : 'translate-x-1'}`} />
-                          </button>
-                      </div>
-                  </div>
-              </div>
-
-              <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex items-center justify-between gap-4">
-                  <button 
-                      onClick={() => handleNavigate('prev')}
-                      disabled={isFirst}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                      <ArrowLeft size={16} /> <span className="hidden xs:inline">Prev</span>
-                  </button>
-                  <button 
-                      onClick={() => setEditingStudentId(null)}
-                      className="flex-[2] bg-indigo-600 text-white py-3 px-6 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all glow-indigo"
-                  >
-                      Save & Close
-                  </button>
-                  <button 
-                      onClick={() => handleNavigate('next')}
-                      disabled={isLast}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                      <span className="hidden xs:inline">Next</span> <ArrowRight size={16} />
-                  </button>
-              </div>
-
-              {/* Manage Subjects Modal */}
-              {isManageSubjectsOpen && (
-                  <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-                      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-0 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                          <div className="bg-slate-50 p-6 border-b border-slate-200 flex justify-between items-center">
-                              <div>
-                                  <h3 className="text-xl font-black text-slate-800 tracking-tight">Manage Report Subjects</h3>
-                                  <p className="text-xs text-slate-500 uppercase font-black">{editingStudent.name}</p>
-                              </div>
-                              <button onClick={() => setIsManageSubjectsOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400">
-                                  <X size={20}/>
-                              </button>
-                          </div>
-                          <div className="p-6 overflow-y-auto max-h-[50vh] space-y-6">
-                              <section>
-                                  <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Standard Subjects</h4>
-                                  <div className="space-y-2">
-                                      {defaultSubjects.map(sub => {
-                                          const isActive = currentSubjects.includes(sub.name);
-                                          return (
-                                              <button 
-                                                key={sub.id} 
-                                                onClick={() => toggleSubject(editingStudent.id, sub.name)}
-                                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-100 text-slate-400'}`}
-                                              >
-                                                  <span className="font-bold text-sm">{sub.name}</span>
-                                                  {isActive ? <CheckSquare size={18} /> : <Square size={18} />}
-                                              </button>
-                                          );
-                                      })}
-                                  </div>
-                              </section>
-                              <section>
-                                  <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-3">Custom Subjects</h4>
-                                  <div className="flex gap-2 mb-3">
-                                      <input 
-                                        type="text" 
-                                        value={newSubInModal}
-                                        onChange={(e) => setNewSubInModal(e.target.value)}
-                                        placeholder="Add Other Subject..."
-                                        className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:border-indigo-500 outline-none"
-                                      />
-                                      <button 
-                                        onClick={() => addCustomSubjectInModal(editingStudent.id)}
-                                        className="bg-indigo-600 text-white p-2 rounded-lg"
-                                      >
-                                          <Plus size={20}/>
-                                      </button>
-                                  </div>
-                                  <div className="space-y-2">
-                                      {currentSubjects.filter(s => !defaultSubjects.some(ds => ds.name === s)).map(sub => (
-                                          <div key={sub} className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl">
-                                              <span className="font-bold text-sm">{sub}</span>
-                                              <button onClick={() => toggleSubject(editingStudent.id, sub)} className="text-rose-500">
-                                                  <Trash2 size={16}/>
-                                              </button>
-                                          </div>
-                                      ))}
-                                  </div>
-                              </section>
-                          </div>
-                          <div className="p-6 bg-slate-50 border-t border-slate-200">
-                              <button onClick={() => setIsManageSubjectsOpen(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">Apply Selection</button>
-                          </div>
-                      </div>
-                  </div>
-              )}
-          </div>
-      );
+                            <option value="PASS">PASS</option>
+                            <option value="FAIL">FAIL</option>
+                        </select>
+                    </div>
+                    <button 
+                        onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)} 
+                        className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white shadow-emerald-900/40 hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                    >
+                        {record.published ? 'Status: Published' : 'Status: Draft'}
+                    </button>
+                </section>
+            </div>
+            <div className="p-4 border-t sticky bottom-0 bg-white/80 backdrop-blur-md z-40">
+                <button onClick={() => setEditingStudentId(null)} className="w-full max-w-lg mx-auto block py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">Save & Back to Registry</button>
+            </div>
+        </div>
+    );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+    <div className="space-y-6">
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Annual Results</h2>
-          <p className="text-sm text-slate-500">Select a class to manage report cards.</p>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Academic Progress Registry</h2>
+            <p className="text-sm text-slate-500 font-medium">Generate and publish year-end progress cards.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search student..." 
-                  className="w-full sm:w-64 pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto justify-end">
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none transition-all w-full sm:w-48" placeholder="Search..."/>
             </div>
-            <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full sm:w-auto px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
+            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
                 <option value="">Select Class</option>
-                {SPECIFIC_CLASSES.filter(c => !c.value.startsWith('Class 10')).map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
+            <button onClick={handleManualSync} disabled={isSyncing} className={`p-2 rounded-xl border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all ${isSyncing ? 'bg-indigo-50 animate-spin' : 'bg-white'}`} title="Sync with Cloud">
+                <RefreshCw size={20} />
+            </button>
         </div>
       </div>
-      
-      {selectedClass && filteredStudents.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-              <button onClick={() => setIsSettingsOpen(true)} className="flex items-center gap-2 bg-white text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium">
-                  <Settings size={16} /> Settings
-              </button>
-              <button onClick={() => downloadClassPDF()} className="flex items-center gap-2 bg-white text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm font-medium">
-                  <Upload size={16} /> Class PDF
-              </button>
-              <div className="flex-1"></div>
-              <button onClick={() => handlePublishAll(true)} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 text-sm font-bold">
-                  <Share2 size={16} /> Publish Class
-              </button>
-              <button onClick={() => handlePublishAll(false)} className="flex items-center gap-2 bg-slate-50 text-slate-600 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-sm font-medium">
-                  Unpublish All
-              </button>
-          </div>
-      )}
 
-      <div className="min-h-[400px]">
-         {!selectedClass ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
-                <FileText size={48} className="mb-4 opacity-20" />
-                <p className="text-lg font-medium">No Class Selected</p>
-                <p className="text-sm">Please select a class from the dropdown above.</p>
-            </div>
-         ) : filteredStudents.length === 0 ? (
-           <div className="flex flex-col items-center justify-center py-16 text-center text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
-             <AlertCircle size={48} className="mb-4 opacity-20" />
-             <p>No students found in this class.</p>
-           </div>
-         ) : (
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredStudents.map(student => {
-                  const record = getRecord(student.id);
-                  const isFilled = Object.keys(record.sem2Grades || {}).length > 0;
-                  
-                  return (
-                      <button 
-                        key={student.id}
-                        onClick={() => setEditingStudentId(student.id)}
-                        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all text-left group flex flex-col h-full"
-                      >
-                          <div className="flex justify-between items-start mb-3 w-full">
-                              <div className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-1 rounded">
-                                  Roll: {student.rollNo}
-                              </div>
-                              {record.published ? (
-                                  <div className="text-emerald-600 bg-emerald-50 p-1 rounded-full" title="Published">
-                                      <CheckCircle2 size={16} />
-                                  </div>
-                              ) : (
-                                  <div className="text-slate-300 p-1" title="Draft">
-                                      <div className="w-4 h-4 rounded-full border-2 border-slate-200"></div>
-                                  </div>
-                              )}
-                          </div>
-                          
-                          <div className="mb-4 flex-1">
-                              <h3 className="font-bold text-slate-800 text-lg leading-tight group-hover:text-indigo-700 transition-colors">
-                                  {student.name}
-                              </h3>
-                              <p className="text-xs text-slate-400 mt-1">{student.className}</p>
-                          </div>
-
-                          <div className="w-full pt-3 border-t border-slate-50 flex justify-between items-center text-sm">
-                              <span className={`text-xs font-medium ${isFilled ? 'text-indigo-600' : 'text-slate-400'}`}>
-                                  {isFilled ? 'Edit Grades' : 'Enter Grades'}
-                              </span>
-                              <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-                          </div>
-                      </button>
-                  );
-              })}
-           </div>
-         )}
-      </div>
-
-      {showSaveSuccess && (
-          <div className="fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-[100] animate-in fade-in slide-in-from-bottom-2">
-              <CheckCircle2 size={20} className="text-emerald-400" />
-              <span className="font-medium">Changes Saved</span>
-          </div>
-      )}
-
-      {isSettingsOpen && (
-          <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                  <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-bold text-slate-800">Report Card Settings</h3>
-                      <button onClick={() => setIsSettingsOpen(false)}><X size={20} className="text-slate-400"/></button>
+      {selectedStudentIds.size > 0 && (
+          <div className="bg-indigo-600 text-white p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
+              <div className="flex items-center gap-3">
+                  <div className="bg-white/20 p-2 rounded-lg">
+                      <CheckSquare size={20} />
                   </div>
-                  <p className="text-sm text-slate-500 mb-4">Select additional student fields to display on the report card.</p>
-                  
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto mb-4">
-                      {customFieldDefs.length === 0 ? (
-                          <div className="text-sm text-slate-400 italic">No custom fields defined in Student Manager.</div>
-                      ) : (
-                          customFieldDefs.map(def => (
-                              <label key={def.id} className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded cursor-pointer border border-transparent hover:border-slate-100">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={reportConfig.showCustomFields.includes(def.id)}
-                                    onChange={() => toggleReportField(def.id)}
-                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                                  />
-                                  <span className="text-sm font-medium text-slate-700">{def.label}</span>
-                              </label>
-                          ))
-                      )}
+                  <div>
+                      <p className="font-black uppercase text-xs tracking-widest">{selectedStudentIds.size} Students Selected</p>
+                      <p className="text-[10px] text-indigo-100 font-medium">Apply cloud publishing actions to all selected.</p>
                   </div>
-                  <button onClick={() => setIsSettingsOpen(false)} className="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-sm">Done</button>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                  <button onClick={() => handleBulkPublish(true)} disabled={isSyncing} className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
+                      {isSyncing ? <Loader2 size={14} className="animate-spin"/> : <Globe size={14}/>} Publish
+                  </button>
+                  <button onClick={() => handleBulkPublish(false)} disabled={isSyncing} className="flex-1 sm:flex-none px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
+                      {isSyncing ? <Loader2 size={14} className="animate-spin"/> : <GlobeLock size={14}/>} Unpublish
+                  </button>
+                  <button onClick={() => setSelectedStudentIds(new Set())} className="px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
               </div>
           </div>
       )}
+      
+      <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
+        <AlertTriangle className="text-amber-600 shrink-0" size={20} />
+        <p className="text-xs font-bold text-amber-800">Publishing makes the report immediately visible on the Student Portal across all devices.</p>
+      </div>
+
+      {!selectedClass ? (
+          <div className="py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 flex flex-col items-center gap-4">
+              <div className="bg-slate-100 p-6 rounded-full text-slate-300">
+                  <FileText size={48} />
+              </div>
+              <div>
+                <p className="font-black text-slate-400 uppercase tracking-widest text-sm">Registry is Empty</p>
+                <p className="text-xs text-slate-500 font-medium">Select a class to manage academic progress.</p>
+              </div>
+          </div>
+      ) : (
+        <div className="space-y-4">
+            <div className="flex items-center gap-3 px-4 py-2">
+                <button onClick={toggleSelectAll} className="text-slate-400 hover:text-indigo-600 transition-colors">
+                    {selectedStudentIds.size === filteredStudents.length && filteredStudents.length > 0 ? <CheckSquare size={20}/> : <Square size={20}/>}
+                </button>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select All Candidates</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {filteredStudents.map(s => {
+                    const rec = getRecord(s.id);
+                    const isSelected = selectedStudentIds.has(s.id);
+                    return (
+                        <div key={s.id} className="relative group">
+                            <div 
+                                onClick={() => toggleStudentSelection(s.id)}
+                                className="absolute top-4 left-4 z-10 p-1 rounded-md transition-all cursor-pointer text-slate-300 hover:text-indigo-600"
+                            >
+                                {isSelected ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} />}
+                            </div>
+                            <button onClick={() => setEditingStudentId(s.id)} className={`w-full bg-white p-5 pl-12 rounded-2xl border transition-all text-left flex flex-col h-full group hover:shadow-lg ${rec.published ? 'border-emerald-100 ring-2 ring-emerald-50' : 'border-slate-200 hover:border-indigo-400'}`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-1 rounded-lg border border-slate-200 uppercase tracking-widest">ROLL: {s.rollNo}</span>
+                                    {rec.published ? (
+                                        <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                            <CheckCircle2 size={10}/> PUBLISHED
+                                        </div>
+                                    ) : (
+                                        <div className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
+                                            DRAFT
+                                        </div>
+                                    )}
+                                </div>
+                                <h3 className="font-black text-slate-800 flex-1 leading-tight group-hover:text-indigo-600 transition-colors uppercase truncate w-full">{s.name}</h3>
+                                <div className="text-[10px] font-black text-slate-400 mt-4 uppercase tracking-widest flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Edit3 size={12}/> Edit Progress Data
+                                </div>
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+      )}
 
       {previewData && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-            <div className="bg-slate-200 rounded-xl shadow-2xl max-w-5xl w-full h-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-                <div className="bg-white p-4 border-b border-slate-200 flex justify-between items-center rounded-t-xl">
-                    <h3 className="font-bold text-slate-800">Report Card Preview</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] p-4 flex items-center justify-center">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-white/20 animate-in zoom-in-95 duration-200">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Official Document Preview</h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Institutional Reporting Format</p>
+                    </div>
                     <div className="flex gap-2">
-                        <button onClick={() => downloadPDF(previewData.student, previewData.record)} className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors">
-                            <Upload size={16}/> Download
+                        <button onClick={() => downloadPDF(previewData.student, previewData.record)} disabled={isGenerating} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2">
+                            {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14}/>} Download PDF
                         </button>
-                        <button onClick={() => setPreviewData(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-                            <X size={20}/>
-                        </button>
+                        <button onClick={() => setPreviewData(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={24}/></button>
                     </div>
                 </div>
-                <div className="flex-1 overflow-auto p-8 flex justify-center bg-slate-500/10">
-                    <div className="bg-white shadow-lg" dangerouslySetInnerHTML={{ 
-                        __html: `<style>${PDF_STYLES}</style>` + generatePDFContent(previewData.student, previewData.record) 
-                    }} />
+                <div className="flex-1 overflow-auto bg-slate-200 p-4 sm:p-12 flex justify-center items-start shadow-inner">
+                    <div className="bg-white shadow-2xl border border-slate-300 w-full max-w-[190mm] min-h-[270mm] scale-90 sm:scale-100 origin-top" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES}</style>${generatePDFContent(previewData.student, previewData.record)}` }} />
                 </div>
             </div>
         </div>
