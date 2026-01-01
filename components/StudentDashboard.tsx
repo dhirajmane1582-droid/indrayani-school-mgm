@@ -82,7 +82,7 @@ const PDF_STYLES_STRETCH_COLOR = `
     }
     .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
     .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000000; }
-    .school-name { font-size: 26px; font-weight: 900; text-transform: uppercase; color: #f97316; margin: 0; line-height: 1; }
+    .school-name { font-size: 26px; font-weight: 900; text-transform: uppercase; color: #c2410c; margin: 0; line-height: 1; }
     .school-details { font-size: 10px; margin-top: 5px; font-weight: 800; color: #374151; }
     .report-badge { 
         margin-top: 10px; 
@@ -140,7 +140,7 @@ const PDF_STYLES_STRETCH_COLOR = `
         border-radius: 15px;
     }
     .result-main { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #000000; }
-    .result-main span { color: #f97316; }
+    .result-main span { color: #c2410c; }
     .reopening { font-size: 11px; font-weight: bold; color: #374151; margin-top: 5px; }
 
     .signatures-row { display: flex; justify-content: space-between; padding: 0 20px; margin-top: 15px; }
@@ -154,6 +154,13 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [isDownloading, setIsDownloading] = useState(false);
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
   const studentAnnualRecord = useMemo(() => student ? annualRecords.find(r => r.studentId === student.id && r.published) || null : null, [annualRecords, student]);
+
+  // Force a fresh sync whenever student enters academic sections to ensure they see latest teacher edits
+  useEffect(() => {
+    if (onRefresh && (activeTab === 'results' || activeTab === 'homework' || activeTab === 'home')) {
+        onRefresh();
+    }
+  }, [activeTab]);
 
   // Seen state tracking for notifications
   const [seenHomeworkIds, setSeenHomeworkIds] = useState<Set<string>>(() => {

@@ -36,8 +36,6 @@ export const initDB = (): Promise<IDBPDatabase> => {
   return dbPromise;
 };
 
-// Helper for timing out slow network requests
-// Fix: Used 'any' to avoid type inference issues when wrapping complex Supabase promise objects in Promise.race
 const withTimeout = (promise: Promise<any> | any, ms: number): Promise<any> => {
   return Promise.race([
     promise,
@@ -56,9 +54,7 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
 
     try {
-      // 2-second timeout for cloud fetch to prevent app hang
-      // Fix: withTimeout now returns any, allowing proper destructuring of data and error properties
-      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 2500);
+      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 5000);
       
       if (error) throw error;
       
@@ -72,7 +68,7 @@ export const dbService = {
         return data;
       }
     } catch (err) {
-      console.debug(`Supabase Sync [${storeName}]: Using local registry fallback.`);
+      console.debug(`Supabase Sync [${storeName}]: Falling back to local.`);
     }
 
     return db.getAll(storeName);
@@ -90,7 +86,7 @@ export const dbService = {
         .from(tableName)
         .upsert(item, { onConflict: conflictColumn });
       
-      if (error) console.debug(`Supabase Queue [${storeName}]: Saved locally, pending cloud sync.`);
+      if (error) console.debug(`Supabase Error [${storeName}]:`, error);
     } catch (err) {
       // Silent catch
     }
@@ -129,7 +125,7 @@ export const dbService = {
         await db.delete(storeName, id);
         await supabase.from(tableName).delete().eq(idField, id);
     } catch (err) {
-        console.debug(`Supabase Delete [${storeName}]: Pending cloud update.`);
+        console.debug(`Supabase Delete [${storeName}] Pending.`);
     }
   },
 

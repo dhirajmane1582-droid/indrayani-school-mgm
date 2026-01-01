@@ -45,7 +45,8 @@ const App: React.FC = () => {
   const isInitialSyncDone = useRef(false);
   
   const scheduleSave = useCallback((store: string, data: any[]) => {
-    // Only schedule saves if initial load is done to prevent immediate redundant writes
+    // CRITICAL: Prevent saving local state back to cloud until the cloud sync has finished.
+    // This stops "empty" or "old" local data from overwriting new data from other devices.
     if (!isInitialSyncDone.current) return;
     
     if (saveTimeoutRef.current[store]) {
@@ -65,30 +66,29 @@ const App: React.FC = () => {
         'customFields', 'holidays', 'users', 'fees', 'homework', 'announcements'
       ];
 
-      // Step 1: Load Local First (Instant)
+      // Step 1: Load Local First (Instant for UI)
       if (!isInitialSyncDone.current) {
         const localData = await Promise.all(stores.map(s => dbService.getLocal(s)));
-        setStudents(localData[0]);
-        setAttendance(localData[1]);
-        setExams(localData[2]);
-        setResults(localData[3]);
-        setAnnualRecords(localData[4]);
-        setCustomFieldDefs(localData[5]);
-        setHolidays(localData[6]);
+        if (localData[0].length) setStudents(localData[0]);
+        if (localData[1].length) setAttendance(localData[1]);
+        if (localData[2].length) setExams(localData[2]);
+        if (localData[3].length) setResults(localData[3]);
+        if (localData[4].length) setAnnualRecords(localData[4]);
+        if (localData[5].length) setCustomFieldDefs(localData[5]);
+        if (localData[6].length) setHolidays(localData[6]);
         setUsers(localData[7].length ? localData[7] : [{ id: 'admin', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' }]);
-        setFees(localData[8]);
-        setHomework(localData[9]);
-        setAnnouncements(localData[10]);
-        setIsLoaded(true); // App is usable now
+        if (localData[8].length) setFees(localData[8]);
+        if (localData[9].length) setHomework(localData[9]);
+        if (localData[10].length) setAnnouncements(localData[10]);
+        setIsLoaded(true); 
       }
 
-      // Step 2: Background Cloud Sync
+      // Step 2: Background Cloud Sync (The "Truth" from other devices)
       if (forceCloud) {
         const fetchResults = await Promise.allSettled(stores.map(s => dbService.getAll(s)));
         const getVal = (idx: number, fallback: any[] = []) => 
           fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
 
-        // Only update state if we got real data back from cloud
         if (fetchResults[0].status === 'fulfilled') setStudents(getVal(0));
         if (fetchResults[1].status === 'fulfilled') setAttendance(getVal(1));
         if (fetchResults[2].status === 'fulfilled') setExams(getVal(2));
@@ -107,7 +107,7 @@ const App: React.FC = () => {
       console.warn("Sync Process Interrupted:", err);
     } finally {
       setIsSyncing(false);
-      setIsLoaded(true); // Fallback to ensure app loads
+      setIsLoaded(true); 
     }
   }, [isSyncing]);
 

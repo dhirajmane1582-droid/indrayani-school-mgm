@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, AnnualRecord, SPECIFIC_CLASSES, getSubjectsForClass, Exam, CustomFieldDefinition } from '../types';
-import { ChevronLeft, Search, CheckCircle2, FileText, X, Download, Eye, Edit3, Loader2, AlertTriangle, Printer, RefreshCw, CheckSquare, Square, Globe, GlobeLock, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Search, CheckCircle2, FileText, X, Download, Eye, Edit3, Loader2, AlertTriangle, Printer, RefreshCw, CheckSquare, Square, Globe, GlobeLock, ChevronDown, Save } from 'lucide-react';
 import { dbService } from '../services/db';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -176,14 +176,31 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           return newArr;
       });
 
-      if (field === 'published') {
+      if (field === 'published' || field === 'resultStatus') {
           setIsSyncing(true);
           try {
+              // Ensure immediate sync for publication
+              const updatedRec = { ...getRecord(studentId) };
               // @ts-ignore
-              await dbService.put('annualRecords', updatedRecord);
+              if(nestedKey) updatedRec[field] = { ...updatedRec[field], [nestedKey]: value }; else updatedRec[field] = value;
+              await dbService.put('annualRecords', updatedRec);
           } finally {
               setIsSyncing(false);
           }
+      }
+  };
+
+  const handleFinishEditing = async (studentId: string) => {
+      setIsSyncing(true);
+      try {
+          const record = getRecord(studentId);
+          // Explicit individual cloud push to bypass background queue for immediate student visibility
+          await dbService.put('annualRecords', record);
+          setEditingStudentId(null);
+      } catch (err) {
+          console.error("Manual Sync Error:", err);
+      } finally {
+          setIsSyncing(false);
       }
   };
 
@@ -200,8 +217,12 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           toSync.push(rec);
       });
       setAnnualRecords(updatedRecords);
-      try { await dbService.putAll('annualRecords', toSync); setSelectedStudentIds(new Set()); }
-      finally { setIsSyncing(false); }
+      try { 
+          await dbService.putAll('annualRecords', toSync); 
+          setSelectedStudentIds(new Set()); 
+      } finally { 
+          setIsSyncing(false); 
+      }
   };
 
   const toggleStudentSelection = (id: string, e?: React.MouseEvent) => {
@@ -229,105 +250,45 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       const schoolName = medium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
       const address = "SECTOR 18, KOPARKHAIRANE, NAVI MUMBAI | UDISE: 27211003415";
       const nextClass = className.startsWith('Class ') ? `Class ${parseInt(className.replace('Class ', '')) + 1}` : className === 'Sr. KG' ? 'Class 1' : 'Next Grade';
-
-      const rows = subjects.map((sub, i) => `
-          <tr>
-              <td style="width:45px;">${i+1}</td>
-              <td class="sub-name">${sub}</td>
-              <td>${record.sem1Grades?.[sub] || '-'}</td>
-              <td>${record.sem2Grades?.[sub] || '-'}</td>
-          </tr>
-      `).join('');
-
+      const rows = subjects.map((sub, i) => `<tr><td style="width:45px;">${i+1}</td><td class="sub-name">${sub}</td><td>${record.sem1Grades?.[sub] || '-'}</td><td>${record.sem2Grades?.[sub] || '-'}</td></tr>`).join('');
       return `
         <div class="pdf-container">
             <div class="page-border">
                 <div class="header">
-                    <div class="logo-container">
-                        <img 
-                          src="https://i.ibb.co/R4t9Jhc1/LOGO-IN.png" 
-                          crossorigin="anonymous" 
-                          class="logo-img" 
-                        />
-                    </div>
+                    <div class="logo-container"><img src="https://i.ibb.co/R4t9Jhc1/LOGO-IN.png" crossorigin="anonymous" class="logo-img" /></div>
                     <p class="school-group">Shree Ganesh Education Academy's</p>
                     <h1 class="school-name">${schoolName}</h1>
                     <p class="school-details">${address}</p>
                     <div class="report-badge">Annual Progress Card 2024-25</div>
                 </div>
-
                 <div class="student-info-box">
                     <div class="field-row"><span class="field-label">Student Name:</span><span class="field-value">${student.name.toUpperCase()}</span></div>
                     <div class="field-row"><span class="field-label">Roll No:</span><span class="field-value">${student.rollNo}</span></div>
                     <div class="field-row"><span class="field-label">Standard:</span><span class="field-value">${student.className}</span></div>
                     <div class="field-row"><span class="field-label">D.O.B:</span><span class="field-value">${student.dob}</span></div>
                 </div>
-
                 <div class="main-grades-section">
                     <table class="grades-table">
-                        <thead>
-                            <tr>
-                                <th style="width:45px;">SR.</th>
-                                <th class="sub-name">SUBJECTS</th>
-                                <th>FIRST SEMESTER</th>
-                                <th>SECOND SEMESTER</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                            <tr class="perc-row">
-                                <td colspan="2" style="text-align: right; padding-right: 20px;">OVERALL PERCENTAGE (%)</td>
-                                <td colspan="2">${record.overallPercentage || '-'} %</td>
-                            </tr>
-                        </tbody>
+                        <thead><tr><th style="width:45px;">SR.</th><th class="sub-name">SUBJECTS</th><th>FIRST SEMESTER</th><th>SECOND SEMESTER</th></tr></thead>
+                        <tbody>${rows}<tr class="perc-row"><td colspan="2" style="text-align: right; padding-right: 20px;">OVERALL PERCENTAGE (%)</td><td colspan="2">${record.overallPercentage || '-'} %</td></tr></tbody>
                     </table>
                 </div>
-
                 <div class="remarks-section">
                     <table class="remarks-grid-table">
-                        <thead>
-                            <tr>
-                                <th>Evaluation Criteria</th>
-                                <th>First Semester</th>
-                                <th>Second Semester</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Evaluation Criteria</th><th>First Semester</th><th>Second Semester</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td class="criteria-label">Special Improvements</td>
-                                <td class="remarks-val">${record.specialImprovementsSem1 || '-'}</td>
-                                <td class="remarks-val">${record.specialImprovementsSem2 || '-'}</td>
-                            </tr>
-                            <tr>
-                                <td class="criteria-label">Hobbies & Interests</td>
-                                <td class="remarks-val">${record.hobbiesSem1 || '-'}</td>
-                                <td class="remarks-val">${record.hobbiesSem2 || '-'}</td>
-                            </tr>
-                            <tr>
-                                <td class="criteria-label">Necessary Improvements</td>
-                                <td class="remarks-val">${record.necessaryImprovementSem1 || '-'}</td>
-                                <td class="remarks-val">${record.necessaryImprovementSem2 || '-'}</td>
-                            </tr>
+                            <tr><td class="criteria-label">Special Improvements</td><td class="remarks-val">${record.specialImprovementsSem1 || '-'}</td><td class="remarks-val">${record.specialImprovementsSem2 || '-'}</td></tr>
+                            <tr><td class="criteria-label">Hobbies & Interests</td><td class="remarks-val">${record.hobbiesSem1 || '-'}</td><td class="remarks-val">${record.hobbiesSem2 || '-'}</td></tr>
+                            <tr><td class="criteria-label">Necessary Improvements</td><td class="remarks-val">${record.necessaryImprovementSem1 || '-'}</td><td class="remarks-val">${record.necessaryImprovementSem2 || '-'}</td></tr>
                         </tbody>
                     </table>
                 </div>
-
-                <table class="grade-key-row">
-                    <tr>
-                        <td>91%+(A1)</td><td>81-90%(A2)</td><td>71-80%(B1)</td><td>61-70%(B2)</td>
-                        <td>51-60%(C1)</td><td>41-50%(C2)</td><td>33-40%(D)</td><td>&lt;33%(E)</td>
-                    </tr>
-                </table>
-
+                <table class="grade-key-row"><tr><td>91%+(A1)</td><td>81-90%(A2)</td><td>71-80%(B1)</td><td>61-70%(B2)</td><td>51-60%(C1)</td><td>41-50%(C2)</td><td>33-40%(D)</td><td>&lt;33%(E)</td></tr></table>
                 <div class="result-ribbon">
                     <div class="result-main">RESULT: <span>${record.resultStatus || 'PASS'}</span> | PROMOTED TO: <span>${nextClass}</span></div>
                     <div class="reopening">SCHOOL REOPENS: 11TH JUNE 2025</div>
                 </div>
-
-                <div class="signatures-row">
-                    <div class="sig-block">CLASS TEACHER'S SIGN</div>
-                    <div class="sig-block">PRINCIPAL'S SIGN</div>
-                </div>
+                <div class="signatures-row"><div class="sig-block">CLASS TEACHER'S SIGN</div><div class="sig-block">PRINCIPAL'S SIGN</div></div>
             </div>
         </div>
       `;
@@ -340,17 +301,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       const lib = h2p.default || h2p;
       const element = document.createElement('div');
       element.innerHTML = `<style>${PDF_STYLES_STRETCH}</style>${generatePDFContent(student, record)}`;
-      const opt = { 
-          margin: 0, 
-          filename: `${student.name.replace(/\s+/g, '_')}_ProgressCard.pdf`, 
-          image: { type: 'png' }, 
-          html2canvas: { 
-              scale: 3, 
-              useCORS: true, 
-              backgroundColor: '#ffffff'
-          }, 
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-      };
+      const opt = { margin: 0, filename: `${student.name.replace(/\s+/g, '_')}_ProgressCard.pdf`, image: { type: 'png' }, html2canvas: { scale: 3, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
       try { await lib().set(opt).from(element).save(); } catch (err) { alert("PDF Error: " + err); } finally { setIsGenerating(false); }
   };
 
@@ -366,9 +317,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                 </div>
                 <div className="flex gap-2">
                     <button onClick={() => setPreviewData({ student: editingStudent, record })} className="p-2 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-all" title="Preview Card"><Eye size={20} /></button>
-                    <button onClick={() => downloadPDF(editingStudent, record)} disabled={isGenerating} className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-all disabled:opacity-50" title="Download PDF">
-                        {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Printer size={20} />}
-                    </button>
+                    <button onClick={() => downloadPDF(editingStudent, record)} disabled={isGenerating} className="p-2 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition-all disabled:opacity-50" title="Download PDF">{isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Printer size={20} />}</button>
                 </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-5xl mx-auto w-full">
@@ -377,13 +326,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                         <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Academic Grades</h4>
                         <div className="flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
                             <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Overall Percentage (%)</label>
-                            <input 
-                              type="text" 
-                              value={record.overallPercentage || ''} 
-                              onChange={(e) => handleRecordChange(editingStudent.id, 'overallPercentage', e.target.value)}
-                              className="w-20 bg-white border border-indigo-300 rounded-lg py-1 px-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm"
-                              placeholder="0.00"
-                            />
+                            <input type="text" value={record.overallPercentage || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'overallPercentage', e.target.value)} className="w-20 bg-white border border-indigo-300 rounded-lg py-1 px-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm" placeholder="0.00" />
                         </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -391,14 +334,8 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                             <div key={sub} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:border-indigo-200 transition-all">
                                 <div className="font-black text-slate-700 text-xs uppercase mb-3 truncate">{sub}</div>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 1</label>
-                                        <input type="text" value={record.sem1Grades?.[sub] || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'sem1Grades', e.target.value, sub)} className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm" placeholder="-" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 2</label>
-                                        <input type="text" value={record.sem2Grades?.[sub] || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'sem2Grades', e.target.value, sub)} className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm" placeholder="-" />
-                                    </div>
+                                    <div><label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 1</label><input type="text" value={record.sem1Grades?.[sub] || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'sem1Grades', e.target.value, sub)} className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm" placeholder="-" /></div>
+                                    <div><label className="text-[9px] text-slate-400 font-black uppercase block mb-1">Sem 2</label><input type="text" value={record.sem2Grades?.[sub] || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'sem2Grades', e.target.value, sub)} className="w-full bg-white border border-slate-300 rounded-xl py-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm" placeholder="-" /></div>
                                 </div>
                             </div>
                         ))}
@@ -425,17 +362,18 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                 <section className="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col sm:flex-row justify-between items-center gap-6 shadow-xl border border-slate-800">
                     <div>
                         <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-2">Final Academic Standing</label>
-                        <select value={record.resultStatus} onChange={(e) => handleRecordChange(editingStudent.id, 'resultStatus', e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 font-black text-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
-                            <option value="PASS">PASS</option><option value="FAIL">FAIL</option>
-                        </select>
+                        <select value={record.resultStatus} onChange={(e) => handleRecordChange(editingStudent.id, 'resultStatus', e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 font-black text-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"><option value="PASS">PASS</option><option value="FAIL">FAIL</option></select>
                     </div>
-                    <button onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)} className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
-                        {record.published ? 'Status: Published' : 'Status: Draft'}
+                    <button onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)} disabled={isSyncing} className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+                        {isSyncing ? 'Syncing...' : (record.published ? 'Status: Published' : 'Status: Draft')}
                     </button>
                 </section>
             </div>
             <div className="p-4 border-t sticky bottom-0 bg-white/80 backdrop-blur-md z-40">
-                <button onClick={() => setEditingStudentId(null)} className="w-full max-w-lg mx-auto block py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all">Save & Back to Registry</button>
+               <button onClick={() => handleFinishEditing(editingStudent.id)} disabled={isSyncing} className="w-full max-w-lg mx-auto flex py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all items-center justify-center gap-2 disabled:opacity-50">
+                  {isSyncing ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />} 
+                  {isSyncing ? 'Syncing Result Live...' : 'Save & Back to Registry'}
+               </button>
             </div>
         </div>
     );
@@ -446,34 +384,13 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4">
         <div><h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Academic Progress Registry</h2><p className="text-sm text-slate-500 font-medium">Manage and generate annual progress cards.</p></div>
         <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
-            <div className="relative flex-1 sm:flex-none sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
-                <input 
-                  type="text" 
-                  value={searchQuery} 
-                  onChange={(e) => setSearchQuery(e.target.value)} 
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all" 
-                  placeholder="Search students..."
-                />
-            </div>
-            <div className="relative">
-                <select 
-                  value={selectedClass} 
-                  onChange={(e) => setSelectedClass(e.target.value)} 
-                  className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none cursor-pointer transition-all min-w-[200px]"
-                >
-                    <option value="">Select Class</option>
-                    {SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-            <button onClick={handleBulkPublish.bind(null, true)} className="px-4 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all shadow-sm">Publish Selected</button>
+            <div className="relative flex-1 sm:flex-none sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all" placeholder="Search students..." /></div>
+            <div className="relative"><select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none cursor-pointer transition-all min-w-[200px]"><option value="">Select Class</option>{SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</select><ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} /></div>
+            <button onClick={handleBulkPublish.bind(null, true)} disabled={isSyncing} className="px-4 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all shadow-sm">Publish Selected</button>
             <button onClick={handleManualSync} disabled={isSyncing} className={`p-2.5 rounded-xl border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm ${isSyncing ? 'animate-spin' : ''}`} title="Sync with Cloud"><RefreshCw size={20} /></button>
         </div>
       </div>
-      {!selectedClass ? (
-          <div className="py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 flex flex-col items-center gap-4"><FileText size={48} className="text-slate-200" /><p className="font-black text-slate-400 uppercase tracking-widest text-sm">Select a class to manage records.</p></div>
-      ) : (
+      {!selectedClass ? (<div className="py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 flex flex-col items-center gap-4"><FileText size={48} className="text-slate-200" /><p className="font-black text-slate-400 uppercase tracking-widest text-sm">Select a class to manage records.</p></div>) : (
         <div className="space-y-4">
             <div className="flex items-center gap-3 px-4 py-2"><button onClick={toggleSelectAll} className="text-slate-400 hover:text-indigo-600 transition-colors">{selectedStudentIds.size === filteredStudents.length ? <CheckSquare size={20}/> : <Square size={20}/>}</button><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select All Candidates</span></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

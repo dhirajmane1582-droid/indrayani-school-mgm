@@ -61,7 +61,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'rollNo' | 'name'>('rollNo');
-  
+  const [isSyncing, setIsSyncing] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [isManageSubjectsOpen, setIsManageSubjectsOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -234,14 +234,52 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
     setSelectedStudentIds(n);
   };
 
-  const handlePublishResults = (pub: boolean) => {
-    if (selectedStudentIds.size === 0) {
-        alert("Select students first.");
-        return;
+  const handlePublishResults = async (pub: boolean) => {
+    if (selectedStudentIds.size === 0) { alert("Select students first."); return; }
+    setIsSyncing(true);
+    const updatedResults = results.map(r => (r.examId === selectedExamId && selectedStudentIds.has(r.studentId)) ? { ...r, published: pub } : r);
+    setResults(updatedResults);
+    
+    try {
+        // Force immediate cloud push for published status
+        await dbService.putAll('results', updatedResults);
+        setToastMsg(pub ? "Results Published to Cloud" : "Results Hidden from Cloud");
+    } catch (e) {
+        console.error("Cloud Sync Error:", e);
+    } finally {
+        setIsSyncing(false);
+        setTimeout(() => setToastMsg(''), 2500);
     }
-    setResults(prev => prev.map(r => (r.examId === selectedExamId && selectedStudentIds.has(r.studentId)) ? { ...r, published: pub } : r));
-    setToastMsg(pub ? "Results Published Successfully" : "Results Unpublished Successfully");
-    setTimeout(() => setToastMsg(''), 2500);
+  };
+
+  const handleManualSaveAll = async () => {
+      setIsSyncing(true);
+      try {
+          await dbService.putAll('results', results);
+          setToastMsg("All Marks Saved to Cloud");
+      } catch (e) {
+          console.error("Manual Save Error:", e);
+          setToastMsg("Sync Failed");
+      } finally {
+          setIsSyncing(false);
+          setTimeout(() => setToastMsg(''), 2000);
+      }
+  };
+
+  const handleSaveAndFinish = async (studentId: string) => {
+      setIsSyncing(true);
+      try {
+          const record = getStudentResult(studentId);
+          // Force immediate individual record sync to ensure student sees it right away
+          await dbService.put('results', record);
+          setExpandedStudentId(null);
+          setToastMsg("Student Result Live");
+      } catch (e) {
+          console.error("Sync Error:", e);
+      } finally {
+          setIsSyncing(false);
+          setTimeout(() => setToastMsg(''), 2000);
+      }
   };
 
   const handleRemoveResults = useCallback(async (studentIdsToRemove: Set<string>) => {
@@ -253,7 +291,6 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
       : `Remove results for ${count} students? This will delete all marks for this exam. This cannot be undone.`;
 
     if (window.confirm(confirmMsg)) {
-        // Find result IDs to delete from cloud
         const resultsToDelete = results.filter(r => 
           r.examId === selectedExamId && studentIdsToRemove.has(r.studentId)
         );
@@ -337,18 +374,10 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
 
   const handleDownloadClassPDF = async () => {
       if (filteredStudents.length === 0) return alert("No students to generate PDF for.");
-      
-      // Robust library resolution for html2pdf
       const exporter = (html2pdf as any).default || (window as any).html2pdf || html2pdf;
-      if (typeof exporter !== 'function') {
-          console.error("html2pdf library could not be resolved as a function.");
-          alert("PDF library failed to load. Please refresh and try again.");
-          return;
-      }
-
+      if (typeof exporter !== 'function') { alert("PDF library failed to load."); return; }
       const element = document.createElement('div');
       element.innerHTML = `<style>${PDF_RESULT_STYLES}</style>${generateClassPDFContent()}`;
-      
       const opt = {
           margin: 0,
           filename: `ResultSheet_${selectedClass}_${currentExam?.title}.pdf`,
@@ -356,80 +385,40 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
           html2canvas: { scale: 2 }, 
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const }
       };
-
       try {
           setToastMsg("Generating PDF...");
           const worker = exporter();
-          if (worker && typeof worker.set === 'function') {
-            await worker.set(opt).from(element).save();
-          } else {
-            // Fallback for older API or direct call
-            await exporter(element, opt);
-          }
+          await worker.set(opt).from(element).save();
           setToastMsg("PDF Ready");
           setTimeout(() => setToastMsg(''), 2000);
-      } catch (err) {
-          console.error("PDF Download Error:", err);
-          alert("Failed to generate PDF. Check console for details.");
-      }
+      } catch (err) { alert("PDF Error: " + err); }
   };
 
-  const toggleStudentExpansion = (id: string) => {
-    setExpandedStudentId(expandedStudentId === id ? null : id);
-  };
+  const toggleStudentExpansion = (id: string) => { setExpandedStudentId(expandedStudentId === id ? null : id); };
 
   return (
     <div className="space-y-6 max-w-full">
-      {/* HEADER SECTION */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 no-print">
          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
             <div>
                <h2 className="text-xl font-bold text-slate-800">Results Entry</h2>
-               <p className="text-sm text-slate-500 mt-1">Manage, remove, and publish student marks.</p>
+               <p className="text-sm text-slate-500 mt-1">Cloud synchronized marks entry.</p>
             </div>
-
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                {/* SORT PICKER */}
                 <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-                    <button 
-                        onClick={() => setSortBy('rollNo')}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'rollNo' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <Hash size={14}/> Roll No
-                    </button>
-                    <button 
-                        onClick={() => setSortBy('name')}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'name' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <SortAsc size={14}/> By Name
-                    </button>
+                    <button onClick={() => setSortBy('rollNo')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'rollNo' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}><Hash size={14}/> Roll No</button>
+                    <button onClick={() => setSortBy('name')} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all tracking-wider ${sortBy === 'name' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}><SortAsc size={14}/> By Name</button>
                 </div>
-
                 <div className="relative">
-                   <select
-                     value={selectedClass ? `${selectedClass}|${selectedMedium}` : ''}
-                     onChange={(e) => {
-                       const val = e.target.value;
-                       if(!val) { setSelectedClass(''); return; }
-                       const [cls, med] = val.split('|');
-                       setSelectedClass(cls);
-                       setSelectedMedium(med as 'English' | 'Semi');
-                     }}
-                     className="w-full sm:w-48 appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                   >
+                   <select value={selectedClass ? `${selectedClass}|${selectedMedium}` : ''} onChange={(e) => { const val = e.target.value; if(!val) { setSelectedClass(''); return; } const [cls, med] = val.split('|'); setSelectedClass(cls); setSelectedMedium(med as 'English' | 'Semi'); }} className="w-full sm:w-48 appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                      <option value="">Select Class</option>
                      {SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                    </select>
                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                 </div>
-
                 {classExams.length > 0 && (
                   <div className="relative">
-                     <select
-                       value={selectedExamId}
-                       onChange={(e) => setSelectedExamId(e.target.value)}
-                       className="w-full sm:w-56 appearance-none pl-4 pr-10 py-2.5 bg-indigo-50 border border-indigo-100 rounded-lg text-sm font-semibold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-                     >
+                     <select value={selectedExamId} onChange={(e) => setSelectedExamId(e.target.value)} className="w-full sm:w-56 appearance-none pl-4 pr-10 py-2.5 bg-indigo-50 border border-indigo-100 rounded-lg text-sm font-semibold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                        {classExams.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
                      </select>
                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none" size={16} />
@@ -442,55 +431,31 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto no-scrollbar pb-1">
                {currentExam && (
                    <>
-                   <button onClick={() => setIsManageSubjectsOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
-                     <Edit3 size={14} /> Manage Subjects
-                   </button>
-                   <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
-                     <Eye size={14} /> Preview Sheet
-                   </button>
-                   <button onClick={handleDownloadClassPDF} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
-                     <FileDown size={14} /> Download PDF
-                   </button>
-                   <button onClick={handleExportMarks} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap">
-                     <Upload size={14} /> Export Marks
-                   </button>
+                   <button onClick={() => setIsManageSubjectsOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap"><Edit3 size={14} /> Manage Subjects</button>
+                   <button onClick={() => setIsPreviewOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-all text-xs font-bold shadow-sm whitespace-nowrap"><Eye size={14} /> Preview Sheet</button>
+                   <button onClick={handleDownloadClassPDF} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-emerald-600 rounded-lg hover:bg-emerald-50 transition-all text-xs font-bold shadow-sm whitespace-nowrap"><FileDown size={14} /> Download PDF</button>
+                   <button onClick={handleExportMarks} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-100 transition-all text-xs font-bold shadow-sm whitespace-nowrap"><Upload size={14} /> Export Marks</button>
                    </>
                )}
             </div>
-            
             {currentExam && (
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
-                   <button 
-                     onClick={() => handleRemoveResults(selectedStudentIds)} 
-                     disabled={selectedStudentIds.size === 0}
-                     className="flex items-center gap-2 bg-rose-50 text-rose-700 px-4 py-2 rounded-lg border border-rose-100 hover:bg-rose-100 transition-all text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                   >
-                       <Eraser size={14}/> Remove Selected
-                   </button>
-                   <button onClick={() => handlePublishResults(false)} className="flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg border border-amber-100 hover:bg-amber-100 transition-all text-xs font-bold">
-                       <GlobeLock size={14}/> Unpublish Selected
-                   </button>
-                   <button onClick={() => handlePublishResults(true)} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all text-xs font-bold">
-                       <Globe size={14}/> Publish Selected
-                   </button>
-                   <button onClick={() => { setToastMsg("Changes Saved"); setTimeout(() => setToastMsg(''), 2000); }} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-all text-xs font-bold glow-indigo">
-                       <Save size={14} /> <span>Save All</span>
+                   <button onClick={() => handleRemoveResults(selectedStudentIds)} disabled={selectedStudentIds.size === 0} className="flex items-center gap-2 bg-rose-50 text-rose-700 px-4 py-2 rounded-lg border border-rose-100 hover:bg-rose-100 transition-all text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"><Eraser size={14}/> Remove Selected</button>
+                   <button onClick={() => handlePublishResults(false)} disabled={isSyncing} className="flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg border border-amber-100 hover:bg-amber-100 transition-all text-xs font-bold disabled:opacity-50"><GlobeLock size={14}/> Unpublish Selected</button>
+                   <button onClick={() => handlePublishResults(true)} disabled={isSyncing} className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all text-xs font-bold disabled:opacity-50"><Globe size={14}/> Publish Selected</button>
+                   <button onClick={handleManualSaveAll} disabled={isSyncing} className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-all text-xs font-bold glow-indigo disabled:opacity-50">
+                       {isSyncing ? <RefreshCcw size={14} className="animate-spin" /> : <Save size={14} />} <span>{isSyncing ? 'Syncing...' : 'Save All'}</span>
                   </button>
               </div>
             )}
          </div>
       </div>
 
-      {/* MAIN LIST AREA */}
       <div className="space-y-3 no-print">
          {!selectedClass ? (
-            <div className="bg-white p-12 text-center text-slate-400 rounded-xl border border-dashed border-slate-200">
-              <p>Please select a class to enter results.</p>
-            </div>
+            <div className="bg-white p-12 text-center text-slate-400 rounded-xl border border-dashed border-slate-200"><p>Please select a class to enter results.</p></div>
          ) : filteredStudents.length === 0 ? (
-           <div className="bg-white p-12 text-center text-slate-400 rounded-xl border border-dashed border-slate-200">
-             <p>No students found for <strong>{selectedClass} ({selectedMedium})</strong>.</p>
-           </div>
+           <div className="bg-white p-12 text-center text-slate-400 rounded-xl border border-dashed border-slate-200"><p>No students found for <strong>{selectedClass} ({selectedMedium})</strong>.</p></div>
          ) : !currentExam ? (
            <div className="bg-white p-12 text-center text-slate-400 rounded-xl border border-dashed border-slate-200">Select an exam to enter results.</div>
          ) : (
@@ -501,7 +466,6 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                 <div className="flex-1">Student Name</div>
                 <div className="w-24 text-right">Total Marks</div>
             </div>
-            
             {filteredStudents.map((student) => {
                 const result = getStudentResult(student.id);
                 const totalObtained = calculateTotalObtained(student.id);
@@ -510,19 +474,10 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                 const storedRecord = results.find(r => r.studentId === student.id && r.examId === selectedExamId);
                 const hasStoredResult = !!storedRecord;
                 const isPublished = storedRecord?.published;
-                
                 return (
                     <div key={student.id} className={`bg-white rounded-xl border transition-all ${isExpanded ? 'border-indigo-500 ring-4 ring-indigo-100 shadow-lg' : 'border-slate-200 hover:border-indigo-200'}`}>
-                        <div 
-                            onClick={() => toggleStudentExpansion(student.id)}
-                            className="p-4 flex items-center gap-4 cursor-pointer"
-                        >
-                            <input 
-                                type="checkbox" 
-                                checked={selectedStudentIds.has(student.id)} 
-                                onClick={(e) => toggleSelection(student.id, e)} 
-                                className="w-5 h-5 rounded-md text-indigo-600 shrink-0" 
-                            />
+                        <div onClick={() => toggleStudentExpansion(student.id)} className="p-4 flex items-center gap-4 cursor-pointer">
+                            <input type="checkbox" checked={selectedStudentIds.has(student.id)} onClick={(e) => toggleSelection(student.id, e)} className="w-5 h-5 rounded-md text-indigo-600 shrink-0" />
                             <div className="w-10 text-center font-mono text-slate-400 font-bold">{student.rollNo}</div>
                             <div className="flex-1 overflow-hidden">
                                 <div className="font-bold text-slate-800 text-sm leading-tight truncate uppercase">{student.name}</div>
@@ -533,33 +488,16 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                                     }
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <div className="text-sm font-black text-indigo-700 whitespace-nowrap">{totalObtained} / {totalMax}</div>
-                            </div>
+                            <div className="text-right"><div className="text-sm font-black text-indigo-700 whitespace-nowrap">{totalObtained} / {totalMax}</div></div>
                             <ChevronDown size={18} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180 text-indigo-500' : ''}`} />
                         </div>
-
                         {isExpanded && (
                             <div className="px-4 pb-6 pt-2 bg-indigo-50/20 border-t border-indigo-100 animate-in slide-in-from-top-2 duration-200">
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
-                                        <Edit3 size={12}/> {isPublished ? 'Edit Live Result' : 'Academic Scoresheet'}
-                                    </h4>
+                                    <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2"><Edit3 size={12}/> {isPublished ? 'Edit Live Result' : 'Academic Scoresheet'}</h4>
                                     <div className="flex items-center gap-3">
-                                      {isPublished && (
-                                         <div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 uppercase animate-pulse">
-                                           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                           Live View Active
-                                         </div>
-                                      )}
-                                      {hasStoredResult && (
-                                          <button 
-                                              onClick={(e) => { e.stopPropagation(); handleRemoveResults(new Set([student.id])); }}
-                                              className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1 hover:text-rose-800 transition-colors px-2 py-1 bg-rose-50 rounded"
-                                          >
-                                              <UserMinus size={12}/> Remove Result
-                                          </button>
-                                      )}
+                                      {isPublished && (<div className="flex items-center gap-1 text-[9px] font-black text-emerald-600 uppercase animate-pulse"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>Live View Active</div>)}
+                                      {hasStoredResult && (<button onClick={(e) => { e.stopPropagation(); handleRemoveResults(new Set([student.id])); }} className="text-[10px] font-black text-rose-600 uppercase tracking-widest flex items-center gap-1 hover:text-rose-800 transition-colors px-2 py-1 bg-rose-50 rounded"><UserMinus size={12}/> Remove Result</button>)}
                                     </div>
                                 </div>
                                 <div className="space-y-3">
@@ -570,22 +508,13 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                                                 <div className="text-[9px] text-slate-400 font-bold uppercase">{sub.evaluationType === 'grade' ? 'Graded Subject' : `Max Marks: ${sub.maxMarks}`}</div>
                                             </div>
                                             <div className="w-24">
-                                                <input 
-                                                    type={sub.evaluationType === 'grade' ? 'text' : 'number'}
-                                                    value={result.marks[sub.id] || ''}
-                                                    onChange={(e) => handleMarkChange(student.id, sub.id, e.target.value)}
-                                                    className={`w-full text-center py-2 border rounded-lg focus:bg-white outline-none text-sm font-black shadow-inner ${isPublished ? 'bg-emerald-50 border-emerald-200 text-emerald-900 focus:border-emerald-500' : 'bg-slate-50 border-slate-300 text-indigo-900 focus:border-indigo-500'}`}
-                                                    placeholder={sub.evaluationType === 'grade' ? 'Gr' : '-'}
-                                                />
+                                                <input type={sub.evaluationType === 'grade' ? 'text' : 'number'} value={result.marks[sub.id] || ''} onChange={(e) => handleMarkChange(student.id, sub.id, e.target.value)} className={`w-full text-center py-2 border rounded-lg focus:bg-white outline-none text-sm font-black shadow-inner ${isPublished ? 'bg-emerald-50 border-emerald-200 text-emerald-900 focus:border-emerald-500' : 'bg-slate-50 border-slate-300 text-indigo-900 focus:border-indigo-500'}`} placeholder={sub.evaluationType === 'grade' ? 'Gr' : '-'} />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <button 
-                                    onClick={() => setExpandedStudentId(null)}
-                                    className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all glow-indigo"
-                                >
-                                    <Save size={16}/> Save & Finish
+                                <button onClick={() => handleSaveAndFinish(student.id)} disabled={isSyncing} className="mt-6 w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all glow-indigo disabled:opacity-50">
+                                   {isSyncing ? <RefreshCcw size={16} className="animate-spin" /> : <Save size={16}/>} <span>{isSyncing ? 'Syncing to Cloud...' : 'Save & Finish'}</span>
                                 </button>
                             </div>
                         )}
@@ -596,7 +525,6 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
          )}
       </div>
 
-      {/* MODALS */}
       {isManageSubjectsOpen && currentExam && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-0 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
@@ -605,16 +533,11 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                         <h3 className="text-xl font-black text-slate-800 tracking-tight">Manage Exam Subjects</h3>
                         <p className="text-sm text-slate-500">{currentExam.title} • {selectedClass}</p>
                     </div>
-                    <button onClick={() => setIsManageSubjectsOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
-                        <X size={20}/>
-                    </button>
+                    <button onClick={() => setIsManageSubjectsOpen(false)} className="p-2 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={20}/></button>
                 </div>
-
                 <div className="p-6 overflow-y-auto max-h-[60vh] space-y-8">
                     <section>
-                        <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <CheckSquare size={14}/> Standard Subjects
-                        </h4>
+                        <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2"><CheckSquare size={14}/> Standard Subjects</h4>
                         <div className="grid grid-cols-1 gap-3">
                             {standardSubjects.map(sub => {
                                 const isActive = !currentExam.activeSubjectIds || currentExam.activeSubjectIds.includes(sub.id);
@@ -623,9 +546,7 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
                                 return (
                                     <div key={sub.id} className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border transition-all ${isActive ? 'bg-white border-slate-200 shadow-sm' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
                                         <div className="flex items-center gap-3 flex-1">
-                                            <button onClick={() => toggleStandardSubject(sub.id)} className="text-indigo-600 hover:scale-110 transition-transform flex-shrink-0">
-                                                {isActive ? <CheckSquare size={22} /> : <Square size={22} className="text-slate-300" />}
-                                            </button>
+                                            <button onClick={() => toggleStandardSubject(sub.id)} className="text-indigo-600 hover:scale-110 transition-transform flex-shrink-0">{isActive ? <CheckSquare size={22} /> : <Square size={22} className="text-slate-300" />}</button>
                                             <div>
                                                 <div className="text-sm font-bold text-slate-800">{sub.name}</div>
                                                 <div className="text-[10px] text-slate-400 font-medium">Internal ID: {sub.id}</div>
@@ -661,24 +582,12 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
               <div className="bg-white rounded-2xl shadow-2xl max-w-[95%] w-full h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                   <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-white">
                       <div className="flex items-center gap-3">
-                          <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
-                              <Eye size={20}/>
-                          </div>
-                          <div>
-                              <h3 className="text-xl font-bold text-slate-800">Result Sheet Preview</h3>
-                              <p className="text-xs text-slate-500 uppercase font-black">Landscape PDF • {selectedClass}</p>
-                          </div>
+                          <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600"><Eye size={20}/></div>
+                          <div><h3 className="text-xl font-bold text-slate-800">Result Sheet Preview</h3><p className="text-xs text-slate-500 uppercase font-black">Landscape PDF • {selectedClass}</p></div>
                       </div>
                       <div className="flex items-center gap-3">
-                          <button 
-                            onClick={handleDownloadClassPDF} 
-                            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
-                          >
-                            <Upload size={18}/> Download PDF
-                          </button>
-                          <button onClick={() => setIsPreviewOpen(false)} className="p-2.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
-                            <X size={24}/>
-                          </button>
+                          <button onClick={handleDownloadClassPDF} className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"><Upload size={18}/> Download PDF</button>
+                          <button onClick={() => setIsPreviewOpen(false)} className="p-2.5 hover:bg-slate-100 rounded-full text-slate-500 transition-colors"><X size={24}/></button>
                       </div>
                   </div>
                   <div className="flex-1 overflow-auto bg-slate-200 p-8 flex justify-center shadow-inner">
@@ -688,10 +597,10 @@ const ResultsManager: React.FC<ResultsManagerProps> = ({
           </div>
       )}
 
-      {toastMsg && (
+      {(toastMsg || isSyncing) && (
           <div className="fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 z-[100] border border-slate-700 animate-in fade-in slide-in-from-bottom-2">
-              <RefreshCcw size={18} className="text-emerald-400 animate-spin" />
-              <span className="font-bold text-sm uppercase tracking-wider">{toastMsg}</span>
+              <RefreshCcw size={18} className={`text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="font-bold text-sm uppercase tracking-wider">{isSyncing ? 'Syncing Cloud...' : toastMsg}</span>
           </div>
       )}
     </div>
