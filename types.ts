@@ -22,6 +22,9 @@ export interface Student {
   address: string;
   phone: string;
   alternatePhone?: string;
+  aadharNo?: string;
+  apaarId?: string;
+  caste?: string;
   customFields?: Record<string, string>;
 }
 
@@ -88,6 +91,7 @@ export interface AnnualRecord {
   necessaryImprovementSem1?: string;
   necessaryImprovementSem2?: string;
   resultStatus?: 'PASS' | 'FAIL' | '';
+  overallPercentage?: string;
   customSubjects: string[];
   subjectOrder?: string[];
   medium?: 'English' | 'Semi';
@@ -284,10 +288,8 @@ export const getSubjectsForClass = (className: string, medium: 'English' | 'Semi
         { id: 'eng', name: 'English', maxMarks: 100, evaluationType: 'marks' },
         { id: 'mar', name: 'Marathi', maxMarks: 100, evaluationType: 'marks' },
         { id: 'hin', name: 'Hindi', maxMarks: 100, evaluationType: 'marks' },
-        { id: 'math1', name: 'Mathematics I', maxMarks: 50, evaluationType: 'marks' },
-        { id: 'math2', name: 'Mathematics II', maxMarks: 50, evaluationType: 'marks' },
-        { id: 'sci1', name: 'Science I', maxMarks: 50, evaluationType: 'marks' },
-        { id: 'sci2', name: 'Science II', maxMarks: 50, evaluationType: 'marks' },
+        { id: 'math', name: 'Mathematics', maxMarks: 100, evaluationType: 'marks' },
+        { id: 'sci', name: 'Science', maxMarks: 100, evaluationType: 'marks' },
         { id: 'sst', name: 'Social Sciences', maxMarks: 100, evaluationType: 'marks' },
       ];
     }

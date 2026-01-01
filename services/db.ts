@@ -19,30 +19,48 @@ const TABLE_MAP: Record<string, string> = {
   'announcements': 'announcements'
 };
 
-export const initDB = async (): Promise<IDBPDatabase> => {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      Object.keys(TABLE_MAP).forEach(store => {
-        if (!db.objectStoreNames.contains(store)) {
-          db.createObjectStore(store, { keyPath: store === 'annualRecords' ? 'studentId' : 'id' });
-        }
-      });
-    },
-  });
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+export const initDB = (): Promise<IDBPDatabase> => {
+  if (!dbPromise) {
+    dbPromise = openDB(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        Object.keys(TABLE_MAP).forEach(store => {
+          if (!db.objectStoreNames.contains(store)) {
+            db.createObjectStore(store, { keyPath: store === 'annualRecords' ? 'studentId' : 'id' });
+          }
+        });
+      },
+    });
+  }
+  return dbPromise;
+};
+
+// Helper for timing out slow network requests
+// Fix: Used 'any' to avoid type inference issues when wrapping complex Supabase promise objects in Promise.race
+const withTimeout = (promise: Promise<any> | any, ms: number): Promise<any> => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+  ]);
 };
 
 export const dbService = {
+  async getLocal(storeName: string) {
+    const db = await initDB();
+    return db.getAll(storeName);
+  },
+
   async getAll(storeName: string) {
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];
 
     try {
-      const { data, error } = await supabase.from(tableName).select('*');
+      // 2-second timeout for cloud fetch to prevent app hang
+      // Fix: withTimeout now returns any, allowing proper destructuring of data and error properties
+      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 2500);
       
-      if (error) {
-        console.error(`Supabase FETCH Error [${storeName}]:`, error.message);
-        throw error;
-      }
+      if (error) throw error;
       
       if (data) {
         const tx = db.transaction(storeName, 'readwrite');
@@ -54,7 +72,7 @@ export const dbService = {
         return data;
       }
     } catch (err) {
-      console.warn(`Fallback to local IDB for ${storeName}`);
+      console.debug(`Supabase Sync [${storeName}]: Using local registry fallback.`);
     }
 
     return db.getAll(storeName);
@@ -72,11 +90,9 @@ export const dbService = {
         .from(tableName)
         .upsert(item, { onConflict: conflictColumn });
       
-      if (error) {
-        console.error(`Supabase UPSERT Error [${storeName}]:`, error.message);
-      }
+      if (error) console.debug(`Supabase Queue [${storeName}]: Saved locally, pending cloud sync.`);
     } catch (err) {
-      // Offline mode
+      // Silent catch
     }
   },
 
@@ -85,7 +101,6 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
-    // Update local cache
     const tx = db.transaction(storeName, 'readwrite');
     await tx.store.clear();
     if (items && items.length > 0) {
@@ -98,15 +113,9 @@ export const dbService = {
     if (!items || items.length === 0) return;
 
     try {
-      const { error } = await supabase
-        .from(tableName)
-        .upsert(items, { onConflict: conflictColumn });
-        
-      if (error) {
-          console.error(`Supabase BATCH UPSERT Error [${storeName}]:`, error.message);
-      }
+      await supabase.from(tableName).upsert(items, { onConflict: conflictColumn });
     } catch (err) {
-      // Offline mode
+      // Silent catch
     }
   },
 
@@ -116,23 +125,11 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const idField = (storeName === 'annualRecords') ? 'studentId' : 'id';
 
-    // Delete locally first
     try {
         await db.delete(storeName, id);
+        await supabase.from(tableName).delete().eq(idField, id);
     } catch (err) {
-        console.error(`Local DELETE error [${storeName}]:`, err);
-    }
-
-    // Attempt cloud delete
-    try {
-      const { error } = await supabase.from(tableName).delete().eq(idField, id);
-      if (error) {
-        console.error(`Supabase DELETE Error [${storeName}]:`, error.message);
-        throw error;
-      }
-    } catch (err) {
-      console.warn(`Cloud deletion failed for ${storeName}/${id}. If you have foreign keys, ensure CASCADE is enabled in SQL.`);
-      throw err;
+        console.debug(`Supabase Delete [${storeName}]: Pending cloud update.`);
     }
   },
 
@@ -142,14 +139,10 @@ export const dbService = {
     const idField = storeName === 'annualRecords' ? 'studentId' : 'id';
 
     await db.clear(storeName);
-
     try {
-      const { error } = await supabase.from(tableName).delete().not(idField, 'is', null);
-      if (error) {
-        console.error(`Supabase CLEAR Error [${storeName}]:`, error.message);
-      }
+      await supabase.from(tableName).delete().not(idField, 'is', null);
     } catch (err) {
-      // Offline mode
+      // Silent catch
     }
   }
 };

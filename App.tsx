@@ -42,106 +42,107 @@ const App: React.FC = () => {
   const [selectedClass, setSelectedClass] = useState<string>('');
 
   const saveTimeoutRef = useRef<Record<string, number>>({});
+  const isInitialSyncDone = useRef(false);
   
   const scheduleSave = useCallback((store: string, data: any[]) => {
+    // Only schedule saves if initial load is done to prevent immediate redundant writes
+    if (!isInitialSyncDone.current) return;
+    
     if (saveTimeoutRef.current[store]) {
       window.clearTimeout(saveTimeoutRef.current[store]);
     }
     saveTimeoutRef.current[store] = window.setTimeout(async () => {
-      setIsSyncing(true);
       await dbService.putAll(store, data);
-      setIsSyncing(false);
-    }, 300);
+    }, 1000);
   }, []);
 
-  const handleSync = useCallback(async () => {
+  const handleSync = useCallback(async (forceCloud = true) => {
     if (isSyncing) return;
     setIsSyncing(true);
     try {
-      const fetchResults = await Promise.allSettled([
-        dbService.getAll('students'),
-        dbService.getAll('attendance'),
-        dbService.getAll('exams'),
-        dbService.getAll('results'),
-        dbService.getAll('annualRecords'),
-        dbService.getAll('customFields'),
-        dbService.getAll('holidays'),
-        dbService.getAll('users'),
-        dbService.getAll('fees'),
-        dbService.getAll('homework'),
-        dbService.getAll('announcements')
-      ]);
+      const stores = [
+        'students', 'attendance', 'exams', 'results', 'annualRecords', 
+        'customFields', 'holidays', 'users', 'fees', 'homework', 'announcements'
+      ];
 
-      const getVal = (idx: number, fallback: any[] = []) => 
-        fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
+      // Step 1: Load Local First (Instant)
+      if (!isInitialSyncDone.current) {
+        const localData = await Promise.all(stores.map(s => dbService.getLocal(s)));
+        setStudents(localData[0]);
+        setAttendance(localData[1]);
+        setExams(localData[2]);
+        setResults(localData[3]);
+        setAnnualRecords(localData[4]);
+        setCustomFieldDefs(localData[5]);
+        setHolidays(localData[6]);
+        setUsers(localData[7].length ? localData[7] : [{ id: 'admin', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' }]);
+        setFees(localData[8]);
+        setHomework(localData[9]);
+        setAnnouncements(localData[10]);
+        setIsLoaded(true); // App is usable now
+      }
 
-      setStudents(getVal(0));
-      setAttendance(getVal(1));
-      setExams(getVal(2));
-      setResults(getVal(3));
-      setAnnualRecords(getVal(4));
-      setCustomFieldDefs(getVal(5));
-      setHolidays(getVal(6));
-      setUsers(prev => {
-        const fetchedUsers = getVal(7);
-        const admin = prev.find(u => u.role === 'headmaster') || { id: '00000000-0000-4000-a000-000000000000', username: 'admin', password: 'admin123', name: 'Administrator', role: 'headmaster' };
-        if (!fetchedUsers.some((u: any) => u.role === 'headmaster')) {
-           return [...fetchedUsers, admin] as User[];
-        }
-        return fetchedUsers;
-      });
-      setFees(getVal(8));
-      setHomework(getVal(9));
-      setAnnouncements(getVal(10));
+      // Step 2: Background Cloud Sync
+      if (forceCloud) {
+        const fetchResults = await Promise.allSettled(stores.map(s => dbService.getAll(s)));
+        const getVal = (idx: number, fallback: any[] = []) => 
+          fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
+
+        // Only update state if we got real data back from cloud
+        if (fetchResults[0].status === 'fulfilled') setStudents(getVal(0));
+        if (fetchResults[1].status === 'fulfilled') setAttendance(getVal(1));
+        if (fetchResults[2].status === 'fulfilled') setExams(getVal(2));
+        if (fetchResults[3].status === 'fulfilled') setResults(getVal(3));
+        if (fetchResults[4].status === 'fulfilled') setAnnualRecords(getVal(4));
+        if (fetchResults[5].status === 'fulfilled') setCustomFieldDefs(getVal(5));
+        if (fetchResults[6].status === 'fulfilled') setHolidays(getVal(6));
+        if (fetchResults[7].status === 'fulfilled') setUsers(getVal(7));
+        if (fetchResults[8].status === 'fulfilled') setFees(getVal(8));
+        if (fetchResults[9].status === 'fulfilled') setHomework(getVal(9));
+        if (fetchResults[10].status === 'fulfilled') setAnnouncements(getVal(10));
+      }
+      
+      isInitialSyncDone.current = true;
     } catch (err) {
-      console.error("Cloud Sync Error:", err);
+      console.warn("Sync Process Interrupted:", err);
     } finally {
       setIsSyncing(false);
+      setIsLoaded(true); // Fallback to ensure app loads
     }
   }, [isSyncing]);
 
   useEffect(() => {
-    const init = async () => {
-      await handleSync();
-      setIsLoaded(true);
-    };
-    init();
+    handleSync();
   }, []); 
 
   useEffect(() => {
-    const onFocus = () => {
-        handleSync();
-    };
+    const onFocus = () => handleSync(true);
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [handleSync]);
 
-  useEffect(() => { if (isLoaded) scheduleSave('students', students); }, [students, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('attendance', attendance); }, [attendance, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('exams', exams); }, [exams, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('results', results); }, [results, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('annualRecords', annualRecords); }, [annualRecords, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('customFields', customFieldDefs); }, [customFieldDefs, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('holidays', holidays); }, [holidays, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('users', users); }, [users, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('fees', fees); }, [fees, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('homework', homework); }, [homework, isLoaded, scheduleSave]);
-  useEffect(() => { if (isLoaded) scheduleSave('announcements', announcements); }, [announcements, isLoaded, scheduleSave]);
+  // Data persistence effects
+  useEffect(() => { scheduleSave('students', students); }, [students, scheduleSave]);
+  useEffect(() => { scheduleSave('attendance', attendance); }, [attendance, scheduleSave]);
+  useEffect(() => { scheduleSave('exams', exams); }, [exams, scheduleSave]);
+  useEffect(() => { scheduleSave('results', results); }, [results, scheduleSave]);
+  useEffect(() => { scheduleSave('annualRecords', annualRecords); }, [annualRecords, scheduleSave]);
+  useEffect(() => { scheduleSave('customFields', customFieldDefs); }, [customFieldDefs, scheduleSave]);
+  useEffect(() => { scheduleSave('holidays', holidays); }, [holidays, scheduleSave]);
+  useEffect(() => { scheduleSave('users', users); }, [users, scheduleSave]);
+  useEffect(() => { scheduleSave('fees', fees); }, [fees, scheduleSave]);
+  useEffect(() => { scheduleSave('homework', homework); }, [homework, scheduleSave]);
+  useEffect(() => { scheduleSave('announcements', announcements); }, [announcements, scheduleSave]);
 
   useEffect(() => {
     if (currentUser) sessionStorage.setItem('et_session', JSON.stringify(currentUser));
     else sessionStorage.removeItem('et_session');
   }, [currentUser]);
 
-  const handleLogout = async () => {
-      setIsSyncing(true);
-      await Promise.all([
-          dbService.putAll('students', students),
-          dbService.putAll('users', users)
-      ]);
+  const handleLogout = () => {
       setCurrentUser(null);
       setActiveTab('home');
-      setIsSyncing(false);
+      isInitialSyncDone.current = false;
   };
 
   const handleExportSystem = () => {
@@ -149,7 +150,7 @@ const App: React.FC = () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `Indrayani_Full_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.href = url; a.download = `Indrayani_Backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click(); URL.revokeObjectURL(url);
   };
 
@@ -157,7 +158,7 @@ const App: React.FC = () => {
     setIsSyncing(true);
     if (data.students) setStudents(data.students);
     if (data.users) setUsers(data.users);
-    await handleSync(); 
+    await handleSync(true); 
     setIsSyncing(false);
   };
 
@@ -165,7 +166,10 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6">
         <Loader2 size={64} className="text-indigo-600 animate-spin" />
-        <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">Establishing Secure Sync...</p>
+        <div className="text-center">
+            <p className="text-sm font-black text-slate-800 uppercase tracking-widest mb-1">Indrayani School</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Syncing Local Registry...</p>
+        </div>
       </div>
     );
   }
@@ -179,7 +183,7 @@ const App: React.FC = () => {
   }[currentUser.role];
 
   if (currentUser.role === 'student') {
-    return <StudentDashboard currentUser={currentUser} onLogout={handleLogout} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} onRefresh={handleSync} isSyncing={isSyncing} />;
+    return <StudentDashboard currentUser={currentUser} onLogout={handleLogout} students={students} homework={homework} exams={exams} results={results} attendance={attendance} announcements={announcements} annualRecords={annualRecords} holidays={holidays} onRefresh={() => handleSync(true)} isSyncing={isSyncing} />;
   }
 
   const dashboardItems = [
@@ -253,7 +257,7 @@ const App: React.FC = () => {
                </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-               <button onClick={handleSync} disabled={isSyncing} className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl active:scale-95 transition-all hidden sm:flex" title="Cloud Update">
+               <button onClick={() => handleSync(true)} disabled={isSyncing} className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 border border-slate-200 rounded-xl active:scale-95 transition-all hidden sm:flex" title="Cloud Update">
                   <RefreshCw size={20} className={isSyncing ? 'animate-spin text-indigo-600' : ''} />
                </button>
                <div className="hidden xs:flex items-center gap-3 bg-white/60 py-1.5 px-3 rounded-2xl border border-white/50 shadow-sm">

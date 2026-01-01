@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, AnnualRecord, SPECIFIC_CLASSES, getSubjectsForClass, Exam, CustomFieldDefinition } from '../types';
-import { ChevronLeft, Search, CheckCircle2, FileText, X, Download, Eye, Edit3, Loader2, AlertTriangle, Printer, RefreshCw, CheckSquare, Square, Globe, GlobeLock } from 'lucide-react';
+import { ChevronLeft, Search, CheckCircle2, FileText, X, Download, Eye, Edit3, Loader2, AlertTriangle, Printer, RefreshCw, CheckSquare, Square, Globe, GlobeLock, ChevronDown } from 'lucide-react';
 import { dbService } from '../services/db';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
@@ -54,22 +54,23 @@ const PDF_STYLES_STRETCH = `
         z-index: 10;
     }
     .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
-    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000; }
-    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; color: #000; margin: 0; line-height: 1.1; }
+    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000000; }
+    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; color: #f97316; margin: 0; line-height: 1.1; }
     .school-details { font-size: 10px; margin-top: 4px; font-weight: bold; color: #000; }
     .report-badge { 
         margin-top: 8px; 
         font-size: 14px; 
         font-weight: bold; 
         text-transform: uppercase; 
-        border: 2px solid #000; 
+        border: 2px solid #000000; 
         display: inline-block; 
         padding: 4px 40px;
-        background: #f0f0f0;
+        background: #f8fafc;
+        color: #000000;
     }
 
     .student-info-box { 
-        border: 1.5px solid #000; 
+        border: 1.5px solid #000000; 
         margin-top: 10px; 
         padding: 12px; 
         display: grid; 
@@ -79,37 +80,40 @@ const PDF_STYLES_STRETCH = `
         background: #ffffff !important;
     }
     .field-row { display: flex; align-items: baseline; }
-    .field-label { font-weight: bold; min-width: 100px; text-transform: uppercase; font-size: 11px; color: #000; }
-    .field-value { border-bottom: 1.5px dotted #000; flex: 1; font-weight: bold; padding-left: 5px; color: #000; }
+    .field-label { font-weight: bold; min-width: 100px; text-transform: uppercase; font-size: 11px; color: #475569; }
+    .field-value { border-bottom: 1.5px dotted #000000; flex: 1; font-weight: bold; padding-left: 5px; color: #000; }
 
     .main-grades-section { flex-grow: 4; display: flex; flex-direction: column; margin: 15px 0; min-height: 0; background: #ffffff !important; }
-    .grades-table { width: 100%; border-collapse: collapse; height: 100%; }
-    .grades-table th { background: #f0f0f0 !important; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000; padding: 10px 4px; color: #000; }
-    .grades-table td { border: 1.5px solid #000; padding: 6px 4px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
+    .grades-table { width: 100%; border-collapse: collapse; }
+    .grades-table th { background: #1e293b !important; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000000; padding: 10px 4px; color: #ffffff; }
+    .grades-table td { border: 1.5px solid #000000; padding: 6px 4px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
     .sub-name { text-align: left; padding-left: 15px; font-size: 12px; }
+    .perc-row { background: #f8fafc !important; }
+    .perc-row td { font-size: 14px; font-weight: 900; padding: 10px; border-top: 2px solid #000; }
 
     .remarks-section { flex-grow: 2.5; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff !important; }
-    .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; height: 100%; }
-    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
-    .remarks-grid-table th { background: #f0f0f0 !important; text-transform: uppercase; font-weight: 900; font-size: 10px; }
-    .criteria-label { font-weight: bold; background: #fafafa !important; width: 170px; text-transform: uppercase; font-size: 10px; vertical-align: middle; }
-    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.4; }
+    .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; height: 100%; border: 1.5px solid #000000; }
+    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000000; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
+    .remarks-grid-table th { background: #1e293b !important; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 10px; }
+    .criteria-label { font-weight: bold; background: #f8fafc !important; width: 170px; text-transform: uppercase; font-size: 10px; vertical-align: middle; color: #475569; }
+    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.4; color: #000000; }
 
     .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    .grade-key-row td { border: 1px solid #000; font-size: 10px; padding: 5px; text-align: center; font-weight: bold; background: #fcfcfc !important; color: #000; }
+    .grade-key-row td { border: 1px solid #000000; font-size: 10px; padding: 5px; text-align: center; font-weight: bold; background: #ffffff !important; color: #000; }
 
     .result-ribbon { 
-        border: 2.5px solid #000; 
+        border: 2.5px solid #000000; 
         padding: 12px; 
         text-align: center; 
-        background: #f0f0f0 !important;
+        background: #f8fafc !important;
         margin-bottom: 15px;
     }
     .result-main { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; color: #000; }
+    .result-main span { color: #f97316; }
     .reopening { font-size: 11px; font-weight: bold; margin-top: 4px; color: #000; }
 
     .signatures-row { display: flex; justify-content: space-between; padding: 0 15px; margin-top: 10px; }
-    .sig-block { width: 220px; border-top: 2px solid #000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000; }
+    .sig-block { width: 220px; border-top: 2px solid #000000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000000; }
 `;
 
 const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
@@ -149,7 +153,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
         studentId, academicYear: '2024-25', grades: {}, sem1Grades: {}, sem2Grades: {}, remarks: '',
         hobbies: '', hobbiesSem1: '', hobbiesSem2: '', improvements: '', improvementsSem1: '', improvementsSem2: '',
         specialImprovementsSem1: '', specialImprovementsSem2: '', necessaryImprovementSem1: '', necessaryImprovementSem2: '',
-        resultStatus: 'PASS', customSubjects: [], published: false
+        resultStatus: 'PASS', overallPercentage: '', customSubjects: [], published: false
       };
   };
 
@@ -172,11 +176,10 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           return newArr;
       });
 
-      // If we are publishing/unpublishing, push to DB immediately
       if (field === 'published') {
           setIsSyncing(true);
           try {
-              // @ts-ignore (we know updatedRecord is defined from above assignment)
+              // @ts-ignore
               await dbService.put('annualRecords', updatedRecord);
           } finally {
               setIsSyncing(false);
@@ -272,6 +275,10 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                         </thead>
                         <tbody>
                             ${rows}
+                            <tr class="perc-row">
+                                <td colspan="2" style="text-align: right; padding-right: 20px;">OVERALL PERCENTAGE (%)</td>
+                                <td colspan="2">${record.overallPercentage || '-'} %</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -287,7 +294,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                         </thead>
                         <tbody>
                             <tr>
-                                <td class="criteria-label">Teacher's Observations</td>
+                                <td class="criteria-label">Special Improvements</td>
                                 <td class="remarks-val">${record.specialImprovementsSem1 || '-'}</td>
                                 <td class="remarks-val">${record.specialImprovementsSem2 || '-'}</td>
                             </tr>
@@ -313,7 +320,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                 </table>
 
                 <div class="result-ribbon">
-                    <div class="result-main">RESULT: ${record.resultStatus || 'PASS'} | PROMOTED TO: ${nextClass}</div>
+                    <div class="result-main">RESULT: <span>${record.resultStatus || 'PASS'}</span> | PROMOTED TO: <span>${nextClass}</span></div>
                     <div class="reopening">SCHOOL REOPENS: 11TH JUNE 2025</div>
                 </div>
 
@@ -366,7 +373,19 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-6 max-w-5xl mx-auto w-full">
                 <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                    <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Academic Grades</h4>
+                    <div className="flex justify-between items-center">
+                        <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Academic Grades</h4>
+                        <div className="flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
+                            <label className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Overall Percentage (%)</label>
+                            <input 
+                              type="text" 
+                              value={record.overallPercentage || ''} 
+                              onChange={(e) => handleRecordChange(editingStudent.id, 'overallPercentage', e.target.value)}
+                              className="w-20 bg-white border border-indigo-300 rounded-lg py-1 px-2 text-center font-black text-indigo-700 focus:border-indigo-600 outline-none transition-all shadow-sm"
+                              placeholder="0.00"
+                            />
+                        </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {subjects.map(sub => (
                             <div key={sub} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:border-indigo-200 transition-all">
@@ -389,7 +408,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                         <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Remarks (Sem 1)</h4>
                         <div className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Teacher's Observations</label><textarea value={record.specialImprovementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Special Improvements</label><textarea value={record.specialImprovementsSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                             <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Hobbies</label><textarea value={record.hobbiesSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                             <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Necessary Improvement</label><textarea value={record.necessaryImprovementSem1 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem1', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                         </div>
@@ -397,7 +416,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                         <h4 className="font-black text-slate-400 uppercase text-[10px] tracking-[0.2em]">Remarks (Sem 2)</h4>
                         <div className="space-y-4">
-                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Teacher's Observations</label><textarea value={record.specialImprovementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
+                            <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Special Improvements</label><textarea value={record.specialImprovementsSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'specialImprovementsSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                             <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Hobbies</label><textarea value={record.hobbiesSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'hobbiesSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                             <div><label className="block text-[10px] font-black text-slate-500 uppercase mb-1.5">Necessary Improvement</label><textarea value={record.necessaryImprovementSem2 || ''} onChange={(e) => handleRecordChange(editingStudent.id, 'necessaryImprovementSem2', e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm font-medium text-slate-800 focus:border-indigo-600 outline-none min-h-[80px]" placeholder="..." /></div>
                         </div>
@@ -426,13 +445,30 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
     <div className="space-y-6">
       <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4">
         <div><h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Academic Progress Registry</h2><p className="text-sm text-slate-500 font-medium">Manage and generate annual progress cards.</p></div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto justify-end">
-            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm font-medium outline-none w-full sm:w-48" placeholder="Search..."/></div>
-            <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl text-sm font-black focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
-                <option value="">Select Class</option>{SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-            </select>
-            <button onClick={handleBulkPublish.bind(null, true)} className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all">Publish Selected</button>
-            <button onClick={handleManualSync} disabled={isSyncing} className={`p-2 rounded-xl border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all ${isSyncing ? 'animate-spin' : ''}`} title="Sync with Cloud"><RefreshCw size={20} /></button>
+        <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
+            <div className="relative flex-1 sm:flex-none sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                <input 
+                  type="text" 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all" 
+                  placeholder="Search students..."
+                />
+            </div>
+            <div className="relative">
+                <select 
+                  value={selectedClass} 
+                  onChange={(e) => setSelectedClass(e.target.value)} 
+                  className="appearance-none pl-4 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none cursor-pointer transition-all min-w-[200px]"
+                >
+                    <option value="">Select Class</option>
+                    {SPECIFIC_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
+            <button onClick={handleBulkPublish.bind(null, true)} className="px-4 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all shadow-sm">Publish Selected</button>
+            <button onClick={handleManualSync} disabled={isSyncing} className={`p-2.5 rounded-xl border border-indigo-100 text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm ${isSyncing ? 'animate-spin' : ''}`} title="Sync with Cloud"><RefreshCw size={20} /></button>
         </div>
       </div>
       {!selectedClass ? (
