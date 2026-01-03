@@ -19,6 +19,7 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
 CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
+  "mothersName" TEXT,
   "rollNo" TEXT,
   "className" TEXT,
   medium TEXT DEFAULT 'English',
@@ -30,6 +31,9 @@ CREATE TABLE IF NOT EXISTS students (
   "aadharNo" TEXT,
   "apaarId" TEXT,
   caste TEXT,
+  "bankName" TEXT,
+  "accountNo" TEXT,
+  "ifscCode" TEXT,
   "customFields" JSONB DEFAULT '{}'::jsonb
 );
 
@@ -72,12 +76,16 @@ CREATE TABLE IF NOT EXISTS results (
 -- 4. ENSURE ALL STUDENT COLUMNS EXIST (Migration for existing tables)
 DO $$ 
 BEGIN 
+    BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "medium" TEXT DEFAULT 'English'; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "placeOfBirth" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "alternatePhone" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "aadharNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "apaarId" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "caste" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "bankName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "accountNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "ifscCode" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "customFields" JSONB DEFAULT '{}'::jsonb; EXCEPTION WHEN duplicate_column THEN NULL; END;
 END $$;
 
@@ -151,7 +159,7 @@ NOTIFY pgrst, 'reload schema';
                         Cloud Sync Action Required
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To see <strong>Aadhar, APAAR, and Caste</strong> on other devices, Supabase must be told these columns exist.
+                        To see <strong>Mother Name, Bank Details, and Govt IDs</strong> on other devices, Supabase must be told these columns exist.
                     </p>
                     <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
                         <li>Click the <strong>Copy</strong> icon on the script below.</li>

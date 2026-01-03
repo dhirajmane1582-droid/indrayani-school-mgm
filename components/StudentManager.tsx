@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle } from 'lucide-react';
+import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle, Building2, UserRound, Plus, Minus } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { dbService } from '../services/db';
 
@@ -46,6 +46,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   currentUser
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showAdditionalFields, setShowAdditionalFields] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [viewingCredsStudent, setViewingCredsStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,6 +60,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   const availableExportFields = [
     { key: 'rollNo', label: 'Roll No' },
     { key: 'name', label: 'Full Name' },
+    { key: 'mothersName', label: 'Mother Name' },
     { key: 'className', label: 'Standard' },
     { key: 'medium', label: 'Medium' },
     { key: 'dob', label: 'Date of Birth' },
@@ -68,6 +70,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     { key: 'aadharNo', label: 'Aadhar Card' },
     { key: 'apaarId', label: 'APAAR ID' },
     { key: 'caste', label: 'Caste' },
+    { key: 'bankName', label: 'Bank Name' },
+    { key: 'accountNo', label: 'Account No' },
+    { key: 'ifscCode', label: 'IFSC Code' },
     { key: 'address', label: 'Address' }
   ];
 
@@ -75,6 +80,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
 
   const [formData, setFormData] = useState<Partial<Student> & { customId?: string, customPass?: string }>({
     name: '',
+    mothersName: '',
     rollNo: '',
     className: 'Class 1',
     medium: 'English',
@@ -86,6 +92,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     aadharNo: '',
     apaarId: '',
     caste: '',
+    bankName: '',
+    accountNo: '',
+    ifscCode: '',
     customFields: {},
     customId: '',
     customPass: ''
@@ -206,6 +215,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     const newStudent: Student = {
       id: studentId,
       name: (formData.name || '').trim(),
+      mothersName: (formData.mothersName || '').trim(),
       rollNo: formData.rollNo || '',
       className: formData.className || 'Class 1',
       medium: (formData.medium as any) || 'English',
@@ -217,6 +227,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
       aadharNo: formData.aadharNo || '',
       apaarId: formData.apaarId || '',
       caste: formData.caste || '',
+      bankName: formData.bankName || '',
+      accountNo: formData.accountNo || '',
+      ifscCode: formData.ifscCode || '',
       customFields: formData.customFields || {}
     };
 
@@ -253,8 +266,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const resetForm = () => {
-    setFormData({ name: '', rollNo: '', className: 'Class 1', medium: 'English', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', aadharNo: '', apaarId: '', caste: '', customFields: {}, customId: '', customPass: '' });
+    setFormData({ name: '', mothersName: '', rollNo: '', className: 'Class 1', medium: 'English', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', aadharNo: '', apaarId: '', caste: '', bankName: '', accountNo: '', ifscCode: '', customFields: {}, customId: '', customPass: '' });
     setNameError(null);
+    setShowAdditionalFields(false);
   };
 
   const editStudent = (student: Student) => {
@@ -266,6 +280,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         customPass: user?.password || '' 
     });
     setNameError(null);
+    setShowAdditionalFields(true);
     setIsModalOpen(true);
   };
 
@@ -294,7 +309,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const downloadImportTemplate = () => {
-    const headers = [['Roll No', 'Full Name', 'Class', 'Medium', 'DOB (YYYY-MM-DD)', 'Place of Birth', 'Phone', 'Alt Phone', 'Aadhar Card', 'APAAR ID', 'Caste', 'Address']];
+    const headers = [['Roll No', 'Full Name', 'Mother Name', 'Class', 'Medium', 'DOB (YYYY-MM-DD)', 'Place of Birth', 'Phone', 'Alt Phone', 'Aadhar Card', 'APAAR ID', 'Caste', 'Bank Name', 'Account No', 'IFSC Code', 'Address']];
     const ws = XLSX.utils.aoa_to_sheet(headers);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -319,6 +334,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         const s: Student = {
           id: studentId,
           name: (row['Full Name'] || row['Name'] || '').toString().trim(),
+          mothersName: (row['Mother Name'] || '').toString().trim(),
           rollNo: (row['Roll No'] || row['Roll'] || '').toString(),
           className: normalizeClassName((row['Class'] || 'Class 1').toString()),
           medium: (row['Medium']?.toString().toLowerCase().includes('semi') ? 'Semi' : 'English'),
@@ -329,6 +345,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           aadharNo: (row['Aadhar Card'] || row['Aadhar'] || '').toString(),
           apaarId: (row['APAAR ID'] || row['Apaar'] || '').toString(),
           caste: (row['Caste'] || '').toString(),
+          bankName: (row['Bank Name'] || '').toString(),
+          accountNo: (row['Account No'] || '').toString(),
+          ifscCode: (row['IFSC Code'] || '').toString(),
           address: (row['Address'] || '').toString(),
           customFields: {}
         };
@@ -434,14 +453,15 @@ const StudentManager: React.FC<StudentManagerProps> = ({
       {/* STUDENT LIST VIEW TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[1200px]">
+            <table className="w-full text-left text-xs min-w-[1400px]">
                 <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b border-slate-200">
                     <tr>
                         <th className="px-4 py-4 w-16 text-center">Roll</th>
-                        <th className="px-4 py-4">Student Name</th>
+                        <th className="px-4 py-4">Student & Mother</th>
                         <th className="px-4 py-4">Contact</th>
                         <th className="px-4 py-4">DOB / POB</th>
-                        <th className="px-4 py-4">Government IDs</th>
+                        <th className="px-4 py-4">Govt IDs</th>
+                        <th className="px-4 py-4">Bank Details</th>
                         <th className="px-4 py-4">Caste</th>
                         <th className="px-4 py-4">Address</th>
                         <th className="px-4 py-4 text-right">Actions</th>
@@ -450,7 +470,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                 <tbody className="divide-y divide-slate-100">
                     {filteredStudents.length === 0 ? (
                         <tr>
-                            <td colSpan={8} className="px-6 py-24 text-center">
+                            <td colSpan={9} className="px-6 py-24 text-center">
                                 <GraduationCap size={48} className="mx-auto text-slate-200 mb-4" />
                                 <p className="text-slate-400 font-black uppercase tracking-widest italic">No Students Found</p>
                             </td>
@@ -469,9 +489,12 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                       {student.name}
                                       <Eye size={12} className="text-slate-300 group-hover:text-indigo-400" />
                                     </button>
-                                    <div className="flex gap-1">
-                                        <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">{student.className}</span>
-                                        <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 uppercase">{student.medium || 'English'}</span>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-[10px] text-slate-400 font-bold uppercase italic flex items-center gap-1"><UserRound size={10}/> {student.mothersName || 'Mother: N/A'}</div>
+                                        <div className="flex gap-1 mt-1">
+                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">{student.className}</span>
+                                            <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200 uppercase">{student.medium || 'English'}</span>
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-4 py-4 font-bold text-slate-600">
@@ -504,6 +527,16 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium uppercase">
                                         <IdCard size={10} />
                                         <span>APAAR:</span> {student.apaarId || '-'}
+                                    </div>
+                                </td>
+                                <td className="px-4 py-4 font-bold text-slate-600">
+                                    <div className="flex items-center gap-1.5">
+                                        <Building2 size={12} className="text-slate-400" />
+                                        {student.bankName || 'N/A'}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1 flex flex-col font-medium">
+                                        <span>ACC: {student.accountNo || '-'}</span>
+                                        <span>IFSC: {student.ifscCode || '-'}</span>
                                     </div>
                                 </td>
                                 <td className="px-4 py-4 font-bold text-slate-600 uppercase">
@@ -665,11 +698,16 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                     </div>
                     <form onSubmit={handleAddStudent} className="flex flex-col flex-1 overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
+                            {/* MAIN FIELDS (NO Collapsible for requested fields) */}
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
                                     <input id="student-name-input" type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className={`w-full px-4 py-3 bg-white border ${nameError ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100' : 'border-slate-200'} rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] transition-all shadow-sm`} placeholder="e.g. Rahul Sharma" required />
                                     {nameError && <p className="text-[10px] text-rose-600 font-bold mt-1.5 flex items-center gap-1 animate-in slide-in-from-top-1"><AlertCircle size={12}/> {nameError}</p>}
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Mother's Name</label>
+                                    <input type="text" value={formData.mothersName} onChange={(e) => handleInputChange('mothersName', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Mrs. Sunita Sharma" />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Standard</label>
@@ -693,6 +731,10 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <input type="date" value={formData.dob} onChange={(e) => handleInputChange('dob', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" required />
                                 </div>
                                 <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
+                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} required />
+                                </div>
+                                <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Place of Birth</label>
                                     <input type="text" value={formData.placeOfBirth} onChange={(e) => handleInputChange('placeOfBirth', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Mumbai" />
                                 </div>
@@ -701,30 +743,72 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <input type="text" value={formData.caste} onChange={(e) => handleInputChange('caste', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Open / OBC" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Phone</label>
-                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} required />
-                                </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Alt. Phone</label>
-                                    <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} />
-                                </div>
-                                <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Aadhar Card No</label>
                                     <input type="text" value={formData.aadharNo} onChange={(e) => handleInputChange('aadharNo', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="12 digit Aadhar" maxLength={12} />
                                 </div>
-                                <div className="col-span-1">
+                                <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">APAAR ID</label>
                                     <input type="text" value={formData.apaarId} onChange={(e) => handleInputChange('apaarId', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="Govt. Identity ID" />
                                 </div>
-                                <div className="col-span-2">
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-0.5 tracking-wider">Access ID (Login Username)</label>
-                                    <input type="text" value={formData.customId} onChange={(e) => handleInputChange('customId', e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-indigo-900 outline-none focus:border-indigo-400" placeholder="Auto-generated if left blank" />
+                            </div>
+
+                            {/* TOGGLE FOR ADDITIONAL FIELDS */}
+                            <div className="flex items-center justify-center pt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-slate-50 border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all font-black text-[10px] uppercase tracking-widest active:scale-95"
+                                >
+                                    {showAdditionalFields ? <Minus size={14}/> : <Plus size={14}/>}
+                                    {showAdditionalFields ? 'Show Less' : 'Add More Details'}
+                                </button>
+                            </div>
+
+                            {/* ADDITIONAL FIELDS (COLLAPSIBLE) */}
+                            {showAdditionalFields && (
+                                <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            <div className="col-span-2">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Alt. Phone</label>
+                                                <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Bank Details (Optional)</h4>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            <div className="col-span-2">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Bank Name</label>
+                                                <input type="text" value={formData.bankName} onChange={(e) => handleInputChange('bankName', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-emerald-500 shadow-sm" placeholder="e.g. State Bank of India" />
+                                            </div>
+                                            <div className="col-span-1">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Account Number</label>
+                                                <input type="text" value={formData.accountNo} onChange={(e) => handleInputChange('accountNo', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-emerald-500 shadow-sm" placeholder="A/C Number" />
+                                            </div>
+                                            <div className="col-span-1">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">IFSC Code</label>
+                                                <input type="text" value={formData.ifscCode} onChange={(e) => handleInputChange('ifscCode', e.target.value.toUpperCase())} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-emerald-500 shadow-sm" placeholder="e.g. SBIN0001234" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-slate-100 pt-6">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">System Settings</h4>
+                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                            <div className="col-span-2">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-0.5 tracking-wider">Access ID (Login Username)</label>
+                                                <input type="text" value={formData.customId} onChange={(e) => handleInputChange('customId', e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-indigo-900 outline-none focus:border-indigo-400" placeholder="Auto-generated if left blank" />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Residential Address</label>
+                                                <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none min-h-[80px] focus:border-[#818cf8] transition-all resize-none shadow-sm" />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="col-span-2">
-                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Residential Address</label>
-                                <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none min-h-[80px] focus:border-[#818cf8] transition-all resize-none shadow-sm" />
-                            </div>
+                            )}
                         </div>
                         <div className="px-8 py-6 shrink-0 flex items-center justify-end gap-6 bg-white border-t border-slate-50 sticky bottom-0">
                             <button type="button" onClick={() => setIsModalOpen(false)} className="text-base font-semibold text-slate-500 hover:text-slate-900">Cancel</button>

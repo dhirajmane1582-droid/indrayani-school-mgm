@@ -25,6 +25,10 @@ export interface Student {
   aadharNo?: string;
   apaarId?: string;
   caste?: string;
+  mothersName?: string;
+  bankName?: string;
+  accountNo?: string;
+  ifscCode?: string;
   customFields?: Record<string, string>;
 }
 
