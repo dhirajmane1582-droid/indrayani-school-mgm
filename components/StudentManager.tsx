@@ -570,7 +570,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         <div className="fixed inset-0 z-[1000] flex flex-col pointer-events-none">
             <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md pointer-events-auto" onClick={() => setViewingCredsStudent(null)}></div>
             <div className="relative flex-1 flex items-center justify-center p-4 pointer-events-none">
-                <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200 border border-slate-200 overflow-hidden">
+                <div className="bg-white w-full max-sm rounded-[2rem] shadow-2xl flex flex-col pointer-events-auto animate-in zoom-in-95 duration-200 border border-slate-200 overflow-hidden">
                     <div className="p-8 pb-4 text-center">
                         <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100 shadow-inner">
                             <ShieldCheck size={32} />
@@ -698,7 +698,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                     </div>
                     <form onSubmit={handleAddStudent} className="flex flex-col flex-1 overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
-                            {/* MAIN FIELDS (NO Collapsible for requested fields) */}
+                            {/* MAIN FIELDS (Required & Primary personal info) */}
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
@@ -752,7 +752,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 </div>
                             </div>
 
-                            {/* TOGGLE FOR ADDITIONAL FIELDS */}
+                            {/* TOGGLE FOR ADDITIONAL FIELDS (+) */}
                             <div className="flex items-center justify-center pt-2">
                                 <button 
                                     type="button" 
@@ -773,10 +773,19 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                                 <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Alt. Phone</label>
                                                 <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} />
                                             </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-0.5 tracking-wider">Access ID (Login Username)</label>
+                                                <input type="text" value={formData.customId} onChange={(e) => handleInputChange('customId', e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-indigo-900 outline-none focus:border-indigo-400" placeholder="Auto-generated if left blank" />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Residential Address</label>
+                                                <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none min-h-[80px] focus:border-[#818cf8] transition-all resize-none shadow-sm" />
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="border-t border-slate-100 pt-6">
+                                    {/* BANK DETAILS AT THE VERY END */}
+                                    <div className="border-t border-slate-100 pt-6 pb-4">
                                         <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Bank Details (Optional)</h4>
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="col-span-2">
@@ -790,20 +799,6 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                             <div className="col-span-1">
                                                 <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">IFSC Code</label>
                                                 <input type="text" value={formData.ifscCode} onChange={(e) => handleInputChange('ifscCode', e.target.value.toUpperCase())} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-emerald-500 shadow-sm" placeholder="e.g. SBIN0001234" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-slate-100 pt-6">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">System Settings</h4>
-                                        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                                            <div className="col-span-2">
-                                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-0.5 tracking-wider">Access ID (Login Username)</label>
-                                                <input type="text" value={formData.customId} onChange={(e) => handleInputChange('customId', e.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-indigo-900 outline-none focus:border-indigo-400" placeholder="Auto-generated if left blank" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Residential Address</label>
-                                                <textarea value={formData.address} onChange={(e) => handleInputChange('address', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none min-h-[80px] focus:border-[#818cf8] transition-all resize-none shadow-sm" />
                                             </div>
                                         </div>
                                     </div>
