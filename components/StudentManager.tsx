@@ -461,9 +461,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                         <th className="px-4 py-4">Contact</th>
                         <th className="px-4 py-4">DOB / POB</th>
                         <th className="px-4 py-4">Govt IDs</th>
-                        <th className="px-4 py-4">Bank Details</th>
                         <th className="px-4 py-4">Caste</th>
                         <th className="px-4 py-4">Address</th>
+                        <th className="px-4 py-4">Bank Details</th>
                         <th className="px-4 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -529,16 +529,6 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                         <span>APAAR:</span> {student.apaarId || '-'}
                                     </div>
                                 </td>
-                                <td className="px-4 py-4 font-bold text-slate-600">
-                                    <div className="flex items-center gap-1.5">
-                                        <Building2 size={12} className="text-slate-400" />
-                                        {student.bankName || 'N/A'}
-                                    </div>
-                                    <div className="text-[10px] text-slate-400 mt-1 flex flex-col font-medium">
-                                        <span>ACC: {student.accountNo || '-'}</span>
-                                        <span>IFSC: {student.ifscCode || '-'}</span>
-                                    </div>
-                                </td>
                                 <td className="px-4 py-4 font-bold text-slate-600 uppercase">
                                     <div className="flex items-center gap-1.5">
                                         <Users2 size={12} className="text-slate-400" />
@@ -549,6 +539,16 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <div className="flex items-start gap-1.5 max-w-[200px]">
                                         <MapPinned size={12} className="text-slate-400 shrink-0 mt-0.5" />
                                         <span className="text-slate-500 font-medium line-clamp-2 leading-relaxed">{student.address || 'Address not recorded.'}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-4 font-bold text-slate-600">
+                                    <div className="flex items-center gap-1.5">
+                                        <Building2 size={12} className="text-slate-400" />
+                                        {student.bankName || 'N/A'}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1 flex flex-col font-medium">
+                                        <span>ACC: {student.accountNo || '-'}</span>
+                                        <span>IFSC: {student.ifscCode || '-'}</span>
                                     </div>
                                 </td>
                                 <td className="px-4 py-4 text-right">
