@@ -36,15 +36,18 @@ CREATE TABLE IF NOT EXISTS students (
 );
 
 -- 2. ENSURE NEW COLUMNS EXIST (FOR EXISTING DATABASES)
--- This part makes sure Mother's Name and Religion are added to your current cloud data.
-ALTER TABLE students ADD COLUMN IF NOT EXISTS "mothersName" TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS religion TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS medium TEXT DEFAULT 'English';
-ALTER TABLE students ADD COLUMN IF NOT EXISTS "placeOfBirth" TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS "alternatePhone" TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS "aadharNo" TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS "apaarId" TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS caste TEXT;
+-- This ensures Mother's Name and Religion columns are added correctly.
+DO $$ 
+BEGIN 
+    BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN religion TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN medium TEXT DEFAULT 'English'; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "placeOfBirth" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "alternatePhone" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "aadharNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "apaarId" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN caste TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+END $$;
 
 -- 3. REPAIR/CREATE USERS TABLE
 CREATE TABLE IF NOT EXISTS users (
@@ -53,7 +56,7 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL,
-  "linkedStudentId" UUID REFERENCES students(id) ON DELETE SET NULL
+  "linkedStudentId" UUID REFERENCES students(id) ON DELETE CASCADE
 );
 
 -- 4. REPAIR/CREATE ANNUAL RECORDS TABLE
@@ -138,7 +141,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes UUID Errors & Missing Columns (Religion/Mother)</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes UUID Errors & Table Mismatches (Religion/Mother)</p>
                 </div>
             </div>
             <button 
@@ -157,7 +160,7 @@ NOTIFY pgrst, 'reload schema';
                         Cloud Fix Required
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To enable <strong>Mother's Name</strong> and <strong>Religion</strong> sync, you must update your Supabase schema using the script below.
+                        To enable <strong>Mother's Name</strong> and <strong>Religion</strong> synchronization, you must update your Supabase schema using the script below.
                     </p>
                     <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
                         <li>Click <strong>Copy</strong> on the script.</li>

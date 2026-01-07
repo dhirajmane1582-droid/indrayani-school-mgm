@@ -400,11 +400,13 @@ const StudentManager: React.FC<StudentManagerProps> = ({
       setIsSyncing(true);
       try {
           const studentUser = users.find(u => u.linkedStudentId === student.id);
-          if (studentUser) await dbService.delete('users', studentUser.id);
+          if (studentUser) {
+              await dbService.delete('users', studentUser.id);
+              setUsers(prev => prev.filter(u => u.id !== studentUser.id));
+          }
           await dbService.delete('students', student.id);
           setStudents(prev => prev.filter(s => s.id !== student.id));
-          setUsers(prev => prev.filter(u => u.linkedStudentId !== student.id));
-          showToast("Student Removed Successfully", "info");
+          showToast("Student & Login Deleted", "info");
       } catch (err: any) {
           alert(`Error deleting student: ${err.message}.`);
       } finally {
@@ -729,7 +731,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                 <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Student's Full Name</label>
                                     <input id="student-name-input" type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] transition-all shadow-sm`} placeholder="e.g. Rahul Sharma" required />
                                 </div>
                                 <div className="col-span-2">
