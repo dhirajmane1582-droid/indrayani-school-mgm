@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS students (
 );
 
 -- 2. ENSURE NEW COLUMNS EXIST (FOR EXISTING DATABASES)
--- This ensures Mother's Name and Religion columns are added correctly.
+-- This part makes sure Mother's Name and Religion are added to your current cloud data.
 DO $$ 
 BEGIN 
     BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
@@ -50,6 +50,7 @@ BEGIN
 END $$;
 
 -- 3. REPAIR/CREATE USERS TABLE
+-- Added ON DELETE CASCADE to "linkedStudentId" so deleting a student wipes their login automatically.
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
@@ -141,7 +142,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes UUID Errors & Table Mismatches (Religion/Mother)</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes Religion, Mother's Name & Login Auto-Cleanup</p>
                 </div>
             </div>
             <button 
@@ -160,7 +161,7 @@ NOTIFY pgrst, 'reload schema';
                         Cloud Fix Required
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To enable <strong>Mother's Name</strong> and <strong>Religion</strong> synchronization, you must update your Supabase schema using the script below.
+                        To enable <strong>Mother's Name</strong>, <strong>Religion</strong>, and <strong>Login Auto-Deletion</strong>, you must update your Supabase schema using the script below.
                     </p>
                     <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
                         <li>Click <strong>Copy</strong> on the script.</li>

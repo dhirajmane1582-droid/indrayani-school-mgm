@@ -255,8 +255,8 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         const existingUser = users.find(u => u.linkedStudentId === studentId);
         const userPayload: User = { 
           id: existingUser?.id || generateUUID(),
-          username: formData.customId || existingUser?.username || username,
-          password: formData.customPass || existingUser?.password || password,
+          username: (formData.customId && formData.customId.trim() !== '') ? formData.customId.trim() : (existingUser?.username || username),
+          password: (formData.customPass && formData.customPass.trim() !== '') ? formData.customPass.trim() : (existingUser?.password || password),
           name: newStudent.name,
           role: 'student' as const,
           linkedStudentId: studentId
@@ -396,7 +396,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const handleRemoveStudent = async (student: Student) => {
-    if (window.confirm(`Are you sure you want to remove ${student.name}? This will delete their login and all academic data.`)) {
+    if (window.confirm(`Are you sure you want to remove ${student.name}? This will delete their login and all academic data. The username "${users.find(u => u.linkedStudentId === student.id)?.username || 'N/A'}" will be freed immediately.`)) {
       setIsSyncing(true);
       try {
           const studentUser = users.find(u => u.linkedStudentId === student.id);
@@ -406,7 +406,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           }
           await dbService.delete('students', student.id);
           setStudents(prev => prev.filter(s => s.id !== student.id));
-          showToast("Student & Login Deleted", "info");
+          showToast("Student & Credentials Removed", "info");
       } catch (err: any) {
           alert(`Error deleting student: ${err.message}.`);
       } finally {
@@ -493,7 +493,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                         <th className="px-4 py-4">Contact</th>
                         <th className="px-4 py-4">DOB / POB</th>
                         <th className="px-4 py-4">Govt IDs</th>
-                        <th className="px-4 py-4">Bio / Caste</th>
+                        <th className="px-4 py-4">Religion / Caste</th>
                         <th className="px-4 py-4">Address</th>
                         <th className="px-4 py-4 text-right">Actions</th>
                     </tr>
@@ -562,15 +562,13 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 </td>
                                 <td className="px-4 py-4 font-bold text-slate-600 uppercase">
                                     <div className="flex items-center gap-1.5">
-                                        <Users2 size={12} className="text-slate-400" />
+                                        <MoonStar size={12} className="text-indigo-500" />
+                                        {student.religion || '-'}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium uppercase">
+                                        <Users2 size={10} className="text-slate-400" />
                                         {student.caste || '-'}
                                     </div>
-                                    {student.religion && (
-                                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium uppercase">
-                                            <MoonStar size={10} className="text-indigo-400" />
-                                            {student.religion}
-                                        </div>
-                                    )}
                                 </td>
                                 <td className="px-4 py-4">
                                     <div className="flex items-start gap-1.5 max-w-[200px]">
