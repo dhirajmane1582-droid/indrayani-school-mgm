@@ -148,21 +148,22 @@ const PDF_STYLES_STRETCH_COLOR = `
 `;
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
-  currentUser, onLogout, students, homework, exams, results, attendance, announcements, annualRecords = [], onRefresh, isSyncing = false
+  currentUser, onLogout, students, homework, exams, results, attendance, announcements, annualRecords = [], holidays = [], onRefresh, isSyncing = false
 }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'homework' | 'exams' | 'results' | 'attendance' | 'notices'>('home');
   const [isDownloading, setIsDownloading] = useState(false);
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
   const studentAnnualRecord = useMemo(() => student ? annualRecords.find(r => r.studentId === student.id && r.published) || null : null, [annualRecords, student]);
 
-  // Force a fresh sync whenever student enters academic sections to ensure they see latest teacher edits
+  const checkHoliday = (dateStr: string) => holidays.find(h => h.endDate ? (dateStr >= h.date && dateStr <= h.endDate) : h.date === dateStr);
+
   useEffect(() => {
     if (onRefresh && (activeTab === 'results' || activeTab === 'homework' || activeTab === 'home')) {
         onRefresh();
     }
   }, [activeTab]);
 
-  // Seen state tracking for notifications
+  // Seen state tracking
   const [seenHomeworkIds, setSeenHomeworkIds] = useState<Set<string>>(() => {
     const saved = localStorage.getItem(`seen_hw_${currentUser.id}`);
     return saved ? new Set(JSON.parse(saved)) : new Set();
@@ -170,6 +171,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   
   const [seenResultIds, setSeenResultIds] = useState<Set<string>>(() => {
     const saved = localStorage.getItem(`seen_res_${currentUser.id}`);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  const [seenNoticeIds, setSeenNoticeIds] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem(`seen_notice_${currentUser.id}`);
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
 
@@ -181,6 +187,10 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     localStorage.setItem(`seen_res_${currentUser.id}`, JSON.stringify(Array.from(seenResultIds)));
   }, [seenResultIds, currentUser.id]);
 
+  useEffect(() => {
+    localStorage.setItem(`seen_notice_${currentUser.id}`, JSON.stringify(Array.from(seenNoticeIds)));
+  }, [seenNoticeIds, currentUser.id]);
+
   const homeworkForClass = useMemo(() => {
     if (!student) return [];
     return homework.filter(h => h.className === student.className);
@@ -191,13 +201,14 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     return results.filter(r => r.studentId === student.id && r.published);
   }, [results, student]);
 
-  const hasNewHomework = useMemo(() => {
-    return homeworkForClass.some(h => !seenHomeworkIds.has(h.id));
-  }, [homeworkForClass, seenHomeworkIds]);
+  const noticesForStudent = useMemo(() => {
+    if (!student) return [];
+    return announcements.filter(a => a.targetClass === 'All' || a.targetClass === student.className);
+  }, [announcements, student]);
 
-  const hasNewResults = useMemo(() => {
-    return resultsForStudent.some(r => !seenResultIds.has(r.id));
-  }, [resultsForStudent, seenResultIds]);
+  const hasNewHomework = useMemo(() => homeworkForClass.some(h => !seenHomeworkIds.has(h.id)), [homeworkForClass, seenHomeworkIds]);
+  const hasNewResults = useMemo(() => resultsForStudent.some(r => !seenResultIds.has(r.id)), [resultsForStudent, seenResultIds]);
+  const hasNewNotices = useMemo(() => noticesForStudent.some(a => !seenNoticeIds.has(a.id)), [noticesForStudent, seenNoticeIds]);
 
   const handleOpenHomework = () => {
     setActiveTab('homework');
@@ -213,13 +224,24 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     setSeenResultIds(newSeen);
   };
 
+  const handleOpenNotices = () => {
+    setActiveTab('notices');
+    const newSeen = new Set(seenNoticeIds);
+    noticesForStudent.forEach(a => newSeen.add(a.id));
+    setSeenNoticeIds(newSeen);
+  };
+
+  const filteredAttendance = useMemo(() => {
+    if (!student) return [];
+    // Automatically cancel/ignore attendance that falls on a holiday
+    return attendance.filter(r => r.studentId === student.id && !checkHoliday(r.date));
+  }, [attendance, student, holidays]);
+
   const attendancePercentage = useMemo(() => {
-    if (!student) return '0.0';
-    const records = attendance.filter(r => r.studentId === student.id);
-    if (records.length === 0) return '100.0';
-    const presentCount = records.filter(r => r.present).length;
-    return ((presentCount / records.length) * 100).toFixed(1);
-  }, [attendance, student]);
+    if (filteredAttendance.length === 0) return '100.0';
+    const presentCount = filteredAttendance.filter(r => r.present).length;
+    return ((presentCount / filteredAttendance.length) * 100).toFixed(1);
+  }, [filteredAttendance]);
 
   const generatePDFContent = () => {
     if (!student || !studentAnnualRecord) return '';
@@ -244,11 +266,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <div class="page-border">
               <div class="header">
                   <div class="logo-container">
-                      <img 
-                        src="https://i.ibb.co/R4t9Jhc1/LOGO-IN.png" 
-                        crossorigin="anonymous" 
-                        class="logo-img" 
-                      />
+                      <img src="https://i.ibb.co/R4t9Jhc1/LOGO-IN.png" crossorigin="anonymous" class="logo-img" />
                   </div>
                   <p class="school-group">Shree Ganesh Education Academy's</p>
                   <h1 class="school-name">${schoolName}</h1>
@@ -344,11 +362,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
         margin: 0, 
         filename: `AnnualReport_${student?.name.replace(/\s+/g, '_')}.pdf`, 
         image: { type: 'png' }, 
-        html2canvas: { 
-            scale: 3, 
-            useCORS: true, 
-            backgroundColor: '#ffffff'
-        }, 
+        html2canvas: { scale: 3, useCORS: true, backgroundColor: '#ffffff' }, 
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
     try { await lib().set(opt).from(element).save(); } catch (err) { console.error("PDF download failed", err); } finally { setIsDownloading(false); }
@@ -366,18 +380,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
              <h1 className="font-black italic uppercase tracking-tighter text-slate-800 text-lg">Indrayani School</h1>
           </div>
           <div className="flex gap-2">
-              <button 
-                onClick={onRefresh} 
-                className={`p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 shadow-sm transition-all active:scale-95 ${isSyncing ? 'animate-spin' : ''}`}
-              >
-                  <RefreshCw size={22}/>
-              </button>
-              <button 
-                onClick={onLogout} 
-                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 shadow-sm transition-all active:scale-95"
-              >
-                  <LogOut size={22}/>
-              </button>
+              <button onClick={onRefresh} className={`p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 shadow-sm transition-all active:scale-95 ${isSyncing ? 'animate-spin' : ''}`}><RefreshCw size={22}/></button>
+              <button onClick={onLogout} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 shadow-sm transition-all active:scale-95"><LogOut size={22}/></button>
           </div>
        </header>
 
@@ -385,97 +389,56 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           <div className="mb-8 p-6 bg-slate-50 border border-slate-200/60 rounded-[2rem] animate-in fade-in slide-in-from-left duration-500">
              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight leading-none mb-3">{student.name}</h2>
              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                <div className="flex items-center gap-1.5">
-                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Standard:</span>
-                   <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.className}</span>
-                </div>
+                <div className="flex items-center gap-1.5"><span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Standard:</span><span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.className}</span></div>
                 <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-emerald-200"></div>
-                <div className="flex items-center gap-1.5">
-                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Roll No:</span>
-                   <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.rollNo}</span>
-                </div>
+                <div className="flex items-center gap-1.5"><span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Roll No:</span><span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.rollNo}</span></div>
                 <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-emerald-200"></div>
-                <div className="flex items-center gap-1.5">
-                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Medium:</span>
-                   <span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.medium || 'English'}</span>
-                </div>
+                <div className="flex items-center gap-1.5"><span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.15em]">Medium:</span><span className="text-sm font-black text-slate-800 uppercase tracking-tight">{student.medium || 'English'}</span></div>
              </div>
           </div>
 
           {activeTab === 'home' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 animate-in fade-in duration-500">
-                  {/* HOMEWORK CARD */}
-                  <button 
-                    onClick={handleOpenHomework}
-                    className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative"
-                  >
-                      <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shrink-0">
-                          <BookOpen size={24}/>
-                      </div>
+                  <button onClick={handleOpenHomework} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-rose-600 rounded-2xl flex items-center justify-center text-white shrink-0"><BookOpen size={24}/></div>
                       <div className="flex-1 pt-0.5">
                           <div className="flex items-center gap-2 mb-1">
                               <h3 className="text-lg font-bold text-slate-800">My Homework</h3>
                               {hasNewHomework && <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tight animate-pulse">(NEW)</span>}
                           </div>
-                          <p className={`text-xs font-bold ${hasNewHomework ? 'text-rose-500' : 'text-slate-400'}`}>
-                            {hasNewHomework ? 'New homework posted!' : 'No new updates'}
-                          </p>
+                          <p className={`text-xs font-bold ${hasNewHomework ? 'text-rose-500' : 'text-slate-400'}`}>{hasNewHomework ? 'New homework posted!' : 'No new updates'}</p>
                       </div>
                   </button>
 
-                  <button 
-                    onClick={() => setActiveTab('exams')}
-                    className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative"
-                  >
-                      <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center text-white shrink-0">
-                          <CalendarCheck size={24}/>
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                          <h3 className="text-lg font-bold text-slate-800 mb-1">Exam Schedule</h3>
-                          <p className="text-slate-500 font-medium text-xs">Upcoming tests</p>
-                      </div>
+                  <button onClick={() => setActiveTab('exams')} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-purple-600 rounded-2xl flex items-center justify-center text-white shrink-0"><CalendarCheck size={24}/></div>
+                      <div className="flex-1 pt-0.5"><h3 className="text-lg font-bold text-slate-800 mb-1">Exam Schedule</h3><p className="text-slate-500 font-medium text-xs">Upcoming tests</p></div>
                   </button>
 
-                  {/* REPORT CARDS CARD */}
-                  <button 
-                    onClick={handleOpenResults}
-                    className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative"
-                  >
-                      <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shrink-0">
-                          <FileBadge size={24}/>
-                      </div>
+                  <button onClick={handleOpenResults} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center text-white shrink-0"><FileBadge size={24}/></div>
                       <div className="flex-1 pt-0.5">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-lg font-bold text-slate-800">Report Cards</h3>
-                            {hasNewResults && <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tight animate-pulse">(NEW)</span>}
+                            {hasNewResults && <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tight animate-pulse">(NEW)</span>}
                           </div>
                           <p className="text-slate-500 font-medium text-xs">Marks & Results</p>
                       </div>
                   </button>
 
-                  <button 
-                    onClick={() => setActiveTab('attendance')}
-                    className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative"
-                  >
-                      <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shrink-0">
-                          <UserCheck size={24}/>
-                      </div>
-                      <div className="flex-1 pt-0.5">
-                          <h3 className="text-lg font-bold text-slate-800 mb-1">Attendance</h3>
-                          <p className="text-slate-500 font-medium text-xs">{attendancePercentage}% presence</p>
-                      </div>
+                  <button onClick={() => setActiveTab('attendance')} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shrink-0"><UserCheck size={24}/></div>
+                      <div className="flex-1 pt-0.5"><h3 className="text-lg font-bold text-slate-800 mb-1">Attendance</h3><p className="text-slate-500 font-medium text-xs">{attendancePercentage}% presence</p></div>
                   </button>
 
-                  <button 
-                    onClick={() => setActiveTab('notices')}
-                    className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative"
-                  >
-                      <div className="w-12 h-12 bg-rose-500 rounded-2xl flex items-center justify-center text-white shrink-0">
-                          <Bell size={24}/>
-                      </div>
+                  <button onClick={handleOpenNotices} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shrink-0"><Bell size={24}/></div>
                       <div className="flex-1 pt-0.5">
-                          <h3 className="text-lg font-bold text-slate-800 mb-1">Notice Board</h3>
-                          <p className="text-slate-500 font-medium text-xs">School updates</p>
+                          <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-lg font-bold text-slate-800">Notice Board</h3>
+                              {hasNewNotices && <span className="bg-blue-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-lg uppercase tracking-tight animate-pulse">(NEW)</span>}
+                          </div>
+                          <p className={`text-xs font-bold ${hasNewNotices ? 'text-blue-500' : 'text-slate-400'}`}>{hasNewNotices ? 'New updates posted!' : 'School updates'}</p>
                       </div>
                   </button>
               </div>
@@ -501,7 +464,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div className="space-y-4 animate-in slide-in-from-bottom-4">
                   <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest mb-2"><X size={20}/> Close</button>
                   <h2 className="text-2xl font-black text-slate-800">Daily Homework</h2>
-                  {homeworkForClass.length === 0 ? (<div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No homework assigned.</div>) : (homeworkForClass.map(h => (<div key={h.id} className="bg-white p-6 rounded-3xl border shadow-sm border-slate-100"><div className="flex justify-between mb-2"><span className="text-[10px] font-black uppercase bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg">{h.subject}</span><span className="text-[10px] text-slate-400 font-bold">{h.date}</span></div><h3 className="font-bold text-lg mb-2">{h.title}</h3><p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{h.description}</p></div>)))}
+                  {homeworkForClass.length === 0 ? (<div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No homework assigned.</div>) : (homeworkForClass.map(h => (<div key={h.id} className="bg-white p-6 rounded-3xl border shadow-sm border-slate-100"><div className="flex justify-between mb-2"><span className="text-[10px] font-black uppercase bg-rose-50 text-rose-700 px-2 py-1 rounded-lg">{h.subject}</span><span className="text-[10px] text-slate-400 font-bold">{h.date}</span></div><h3 className="font-bold text-lg mb-2">{h.title}</h3><p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{h.description}</p></div>)))}
               </div>
           )}
 
@@ -509,7 +472,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div className="space-y-4 animate-in slide-in-from-bottom-4">
                   <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest mb-2"><X size={20}/> Close</button>
                   <h2 className="text-2xl font-black text-slate-800">School Notices</h2>
-                  {announcements.filter(a => a.targetClass === 'All' || a.targetClass === student.className).length === 0 ? (<div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No notices yet.</div>) : (announcements.filter(a => a.targetClass === 'All' || a.targetClass === student.className).map(a => (<div key={a.id} className="bg-white p-6 rounded-3xl border shadow-sm border-slate-100"><div className="flex justify-between mb-2"><span className="text-[10px] font-black uppercase bg-rose-50 text-rose-700 px-2 py-1 rounded-lg">Official</span><span className="text-[10px] text-slate-400 font-bold">{a.date}</span></div><h3 className="font-bold text-lg mb-2">{a.title}</h3><p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{a.content}</p></div>)))}
+                  {noticesForStudent.length === 0 ? (<div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No notices yet.</div>) : (noticesForStudent.map(a => (<div key={a.id} className="bg-white p-6 rounded-3xl border shadow-sm border-slate-100"><div className="flex justify-between mb-2"><span className="text-[10px] font-black uppercase bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">Official</span><span className="text-[10px] text-slate-400 font-bold">{a.date}</span></div><h3 className="font-bold text-lg mb-2">{a.title}</h3><p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{a.content}</p></div>)))}
               </div>
           )}
 
@@ -517,62 +480,20 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
               <div className="space-y-6 animate-in slide-in-from-bottom-4">
                   <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest mb-2"><X size={20}/> Close</button>
                   <div className="bg-emerald-600 p-8 rounded-[2rem] text-white shadow-xl flex items-center justify-between">
-                      <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Academic Year 2024-25</p>
-                          <h2 className="text-4xl font-black mb-1">{attendancePercentage}%</h2>
-                          <p className="text-sm font-bold uppercase opacity-90 tracking-tighter">Current Attendance</p>
-                      </div>
+                      <div><p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Academic Year 2024-25</p><h2 className="text-4xl font-black mb-1">{attendancePercentage}%</h2><p className="text-sm font-bold uppercase opacity-90 tracking-tighter">Current Attendance</p></div>
                       <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/30"><UserCheck size={48}/></div>
                   </div>
                   <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                       <div className="p-4 border-b border-slate-50 bg-slate-50/30 text-[10px] font-black uppercase text-slate-400 tracking-widest">Recent Records</div>
                       <div className="divide-y divide-slate-50 max-h-[400px] overflow-y-auto no-scrollbar">
-                          {attendance.filter(r => r.studentId === student.id).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10).map(r => (
+                          {filteredAttendance.sort((a,b) => b.date.localeCompare(a.date)).slice(0, 10).map(r => (
                               <div key={r.id} className="p-4 flex justify-between items-center">
-                                  <div className="flex items-center gap-3">
-                                      <div className={`w-2 h-2 rounded-full ${r.present ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                                      <span className="font-bold text-slate-700 text-sm">{new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                                  </div>
+                                  <div className="flex items-center gap-3"><div className={`w-2 h-2 rounded-full ${r.present ? 'bg-emerald-500' : 'bg-rose-500'}`}></div><span className="font-bold text-slate-700 text-sm">{new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
                                   <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${r.present ? 'text-emerald-600 bg-emerald-50 border border-emerald-100' : 'text-rose-600 bg-rose-50 border border-rose-100'}`}>{r.present ? 'Present' : 'Absent'}</span>
                               </div>
                           ))}
-                          {attendance.filter(r => r.studentId === student.id).length === 0 && <div className="p-12 text-center text-slate-300 italic text-sm">No records logged yet.</div>}
+                          {filteredAttendance.length === 0 && <div className="p-12 text-center text-slate-300 italic text-sm">No valid records logged yet.</div>}
                       </div>
-                  </div>
-              </div>
-          )}
-
-          {activeTab === 'exams' && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-4">
-                  <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest mb-2"><X size={20}/> Close</button>
-                  <h2 className="text-2xl font-black text-slate-800 mb-4">Exam Schedules</h2>
-                  <div className="grid grid-cols-1 gap-4">
-                      {exams.filter(e => e.className === student.className).length === 0 ? (<div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200 text-slate-300 italic">No exams scheduled.</div>) : (exams.filter(e => e.className === student.className).map(e => (
-                          <div key={e.id} className="bg-white p-6 rounded-3xl border shadow-sm border-slate-100">
-                              <div className="flex justify-between items-start mb-4">
-                                  <div>
-                                      <span className="text-[10px] font-black uppercase bg-purple-50 text-purple-700 px-2 py-1 rounded-lg border border-purple-100">{e.type}</span>
-                                      <h3 className="font-black text-xl mt-2">{e.title}</h3>
-                                  </div>
-                                  <div className="text-right">
-                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Starting Date</p>
-                                      <p className="font-black text-slate-800">{new Date(e.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</p>
-                                  </div>
-                              </div>
-                              <div className="bg-slate-50/50 rounded-2xl border border-slate-100 overflow-hidden">
-                                  <table className="w-full text-left text-xs">
-                                      <thead className="bg-slate-100/50 text-slate-500 font-black uppercase">
-                                          <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Subject</th></tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-100">
-                                          {e.timetable?.map(t => (
-                                              <tr key={t.id}><td className="px-4 py-3 font-bold text-slate-600">{new Date(t.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td><td className="px-4 py-3 font-black text-slate-800">{t.subject}</td></tr>
-                                          ))}
-                                      </tbody>
-                                  </table>
-                              </div>
-                          </div>
-                      )))}
                   </div>
               </div>
           )}
