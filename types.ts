@@ -25,10 +25,8 @@ export interface Student {
   aadharNo?: string;
   apaarId?: string;
   caste?: string;
+  religion?: string;
   mothersName?: string;
-  bankName?: string;
-  accountNo?: string;
-  ifscCode?: string;
   customFields?: Record<string, string>;
 }
 
@@ -89,7 +87,6 @@ export interface AnnualRecord {
   improvements: string;
   improvementsSem1?: string;
   improvementsSem2?: string;
-  // New fields for Progress Card layout
   specialImprovementsSem1?: string;
   specialImprovementsSem2?: string;
   necessaryImprovementSem1?: string;
@@ -191,7 +188,6 @@ export const SPECIFIC_CLASSES: ClassOption[] = [
 export const getSubjectsForClass = (className: string, medium: 'English' | 'Semi' = 'English'): Subject[] => {
   if (className === 'Alumni') return [];
 
-  // Logic for Nursery, Jr. KG, Sr. KG based on handwritten lists
   if (className === 'Nursery') {
     if (medium === 'English') {
       return [

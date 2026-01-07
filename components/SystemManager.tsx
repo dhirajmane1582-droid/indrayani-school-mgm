@@ -13,9 +13,9 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const sqlSchema = `-- INDRAYANI SCHOOL DATABASE COMPREHENSIVE REPAIR SCRIPT
--- Run this in Supabase SQL Editor to fix synchronization issues and missing fields.
+-- Run this in Supabase SQL Editor to fix synchronization issues and missing columns.
 
--- 1. FIX STUDENTS TABLE (Critical for Cross-Device Sync)
+-- 1. REPAIR/CREATE STUDENTS TABLE
 CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS students (
   "rollNo" TEXT,
   "className" TEXT,
   medium TEXT DEFAULT 'English',
+  religion TEXT,
   dob TEXT,
   "placeOfBirth" TEXT,
   address TEXT,
@@ -31,13 +32,31 @@ CREATE TABLE IF NOT EXISTS students (
   "aadharNo" TEXT,
   "apaarId" TEXT,
   caste TEXT,
-  "bankName" TEXT,
-  "accountNo" TEXT,
-  "ifscCode" TEXT,
   "customFields" JSONB DEFAULT '{}'::jsonb
 );
 
--- 2. FIX ANNUAL RECORDS TABLE
+-- 2. ENSURE NEW COLUMNS EXIST (FOR EXISTING DATABASES)
+-- This part makes sure Mother's Name and Religion are added to your current cloud data.
+ALTER TABLE students ADD COLUMN IF NOT EXISTS "mothersName" TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS religion TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS medium TEXT DEFAULT 'English';
+ALTER TABLE students ADD COLUMN IF NOT EXISTS "placeOfBirth" TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS "alternatePhone" TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS "aadharNo" TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS "apaarId" TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS caste TEXT;
+
+-- 3. REPAIR/CREATE USERS TABLE
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  "linkedStudentId" UUID REFERENCES students(id) ON DELETE SET NULL
+);
+
+-- 4. REPAIR/CREATE ANNUAL RECORDS TABLE
 CREATE TABLE IF NOT EXISTS annual_records (
   "studentId" UUID PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
   "academicYear" TEXT,
@@ -63,44 +82,23 @@ CREATE TABLE IF NOT EXISTS annual_records (
   published BOOLEAN DEFAULT false
 );
 
--- 3. FIX RESULTS TABLE
+-- 5. REPAIR/CREATE RESULTS TABLE
 CREATE TABLE IF NOT EXISTS results (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  "examId" UUID REFERENCES exams(id) ON DELETE CASCADE,
+  "examId" UUID,
   marks JSONB DEFAULT '{}'::jsonb,
   "aiRemark" TEXT,
   published BOOLEAN DEFAULT false
 );
 
--- 4. ENSURE ALL STUDENT COLUMNS EXIST (Migration for existing tables)
-DO $$ 
-BEGIN 
-    BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "medium" TEXT DEFAULT 'English'; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "placeOfBirth" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "alternatePhone" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "aadharNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "apaarId" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "caste" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "bankName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "accountNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "ifscCode" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "customFields" JSONB DEFAULT '{}'::jsonb; EXCEPTION WHEN duplicate_column THEN NULL; END;
-END $$;
-
--- 5. PERMISSIONS (Disable RLS for easy sync across devices)
+-- 6. DISABLE RLS (Security handled by App Logic)
 ALTER TABLE students DISABLE ROW LEVEL SECURITY;
 ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE results DISABLE ROW LEVEL SECURITY;
-ALTER TABLE exams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fees DISABLE ROW LEVEL SECURITY;
-ALTER TABLE homework DISABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 
--- 6. REFRESH CACHE
+-- 7. CLEAR CACHE
 NOTIFY pgrst, 'reload schema';
 `;
 
@@ -140,7 +138,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes missing Student Fields & Cross-Device Sync</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes UUID Errors & Missing Columns (Religion/Mother)</p>
                 </div>
             </div>
             <button 
@@ -156,16 +154,16 @@ NOTIFY pgrst, 'reload schema';
                 <div className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-3">
                     <p className="text-sm font-bold text-indigo-100 flex items-center gap-2">
                         <AlertTriangle size={16} className="text-amber-400" /> 
-                        Cloud Sync Action Required
+                        Cloud Fix Required
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To see <strong>Mother Name, Bank Details, and Govt IDs</strong> on other devices, Supabase must be told these columns exist.
+                        To enable <strong>Mother's Name</strong> and <strong>Religion</strong> sync, you must update your Supabase schema using the script below.
                     </p>
                     <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
-                        <li>Click the <strong>Copy</strong> icon on the script below.</li>
+                        <li>Click <strong>Copy</strong> on the script.</li>
                         <li>Click <strong>Open Supabase Editor</strong>.</li>
-                        <li>Paste the code and click <strong>Run</strong>.</li>
-                        <li>Once finished, click <strong>Sync/Refresh</strong> in the app header on all devices.</li>
+                        <li>Paste and click <strong>Run</strong>.</li>
+                        <li>Refresh the app.</li>
                     </ol>
                 </div>
                 <div className="relative">

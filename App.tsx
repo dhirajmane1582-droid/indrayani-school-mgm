@@ -43,22 +43,25 @@ const App: React.FC = () => {
 
   const saveTimeoutRef = useRef<Record<string, number>>({});
   const isInitialSyncDone = useRef(false);
+  const isSavingRef = useRef(false);
   
   const scheduleSave = useCallback((store: string, data: any[]) => {
     // CRITICAL: Prevent saving local state back to cloud until the cloud sync has finished.
-    // This stops "empty" or "old" local data from overwriting new data from other devices.
     if (!isInitialSyncDone.current) return;
     
     if (saveTimeoutRef.current[store]) {
       window.clearTimeout(saveTimeoutRef.current[store]);
     }
     saveTimeoutRef.current[store] = window.setTimeout(async () => {
+      isSavingRef.current = true;
       await dbService.putAll(store, data);
-    }, 1000);
+      isSavingRef.current = false;
+    }, 1500);
   }, []);
 
   const handleSync = useCallback(async (forceCloud = true) => {
-    if (isSyncing) return;
+    // Don't sync from cloud if we are currently saving local data to cloud
+    if (isSyncing || isSavingRef.current) return;
     setIsSyncing(true);
     try {
       const stores = [
@@ -89,6 +92,7 @@ const App: React.FC = () => {
         const getVal = (idx: number, fallback: any[] = []) => 
           fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
 
+        // Only update state if the fetch was successful and we aren't currently editing
         if (fetchResults[0].status === 'fulfilled') setStudents(getVal(0));
         if (fetchResults[1].status === 'fulfilled') setAttendance(getVal(1));
         if (fetchResults[2].status === 'fulfilled') setExams(getVal(2));
@@ -115,11 +119,8 @@ const App: React.FC = () => {
     handleSync();
   }, []); 
 
-  useEffect(() => {
-    const onFocus = () => handleSync(true);
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [handleSync]);
+  // REMOVED: Auto-sync on window focus. This was causing new data to be overwritten 
+  // by old cloud data before the background save could finish.
 
   // Data persistence effects
   useEffect(() => { scheduleSave('students', students); }, [students, scheduleSave]);

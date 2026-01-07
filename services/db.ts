@@ -36,10 +36,23 @@ export const initDB = (): Promise<IDBPDatabase> => {
   return dbPromise;
 };
 
+// Robust UUID v4 Generator Fallback for non-secure contexts
+export const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {}
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const withTimeout = (promise: Promise<any> | any, ms: number): Promise<any> => {
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Sync Timeout')), ms))
   ]);
 };
 
@@ -54,21 +67,20 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
 
     try {
-      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 5000);
+      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 10000);
       
       if (error) throw error;
       
-      if (data) {
+      if (data && data.length > 0) {
         const tx = db.transaction(storeName, 'readwrite');
-        await tx.store.clear();
         for (const item of data) {
           await tx.store.put(item);
         }
         await tx.done;
         return data;
       }
-    } catch (err) {
-      console.debug(`Supabase Sync [${storeName}]: Falling back to local.`);
+    } catch (err: any) {
+      console.warn(`Supabase Sync [${storeName}] Failed:`, err.message || err);
     }
 
     return db.getAll(storeName);
@@ -79,16 +91,23 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
+    // 1. Save Locally First
     await db.put(storeName, item);
 
+    // 2. Try Cloud Save
     try {
       const { error } = await supabase
         .from(tableName)
         .upsert(item, { onConflict: conflictColumn });
       
-      if (error) console.debug(`Supabase Error [${storeName}]:`, error);
+      if (error) {
+          const errMsg = error.message || 'Database error';
+          const details = error.details || '';
+          console.error(`Supabase Upsert Error [${storeName}]:`, error);
+          throw new Error(`${errMsg} ${details}`);
+      }
     } catch (err) {
-      // Silent catch
+      throw err;
     }
   },
 
@@ -97,21 +116,19 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
+    if (!items || items.length === 0) return;
+
     const tx = db.transaction(storeName, 'readwrite');
-    await tx.store.clear();
-    if (items && items.length > 0) {
-      for (const item of items) {
-        await tx.store.put(item);
-      }
+    for (const item of items) {
+      await tx.store.put(item);
     }
     await tx.done;
 
-    if (!items || items.length === 0) return;
-
     try {
-      await supabase.from(tableName).upsert(items, { onConflict: conflictColumn });
+      const { error } = await supabase.from(tableName).upsert(items, { onConflict: conflictColumn });
+      if (error) console.error(`Supabase Bulk Error [${storeName}]:`, error.message);
     } catch (err) {
-      // Silent catch
+      console.error(`Supabase Connection Failed [${storeName}]`);
     }
   },
 
@@ -125,7 +142,7 @@ export const dbService = {
         await db.delete(storeName, id);
         await supabase.from(tableName).delete().eq(idField, id);
     } catch (err) {
-        console.debug(`Supabase Delete [${storeName}] Pending.`);
+        console.debug(`Supabase Delete [${storeName}] Failed.`);
     }
   },
 
