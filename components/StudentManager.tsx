@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle, Building2, UserRound, Plus, Minus } from 'lucide-react';
+import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle, Building2, UserRound, Plus, Minus, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { dbService } from '../services/db';
 
@@ -36,6 +36,14 @@ const formatResilientDate = (val: any): string => {
     return val.toString();
 };
 
+const generateSafeId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch (e) {
+    return 'stu_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+  }
+};
+
 const StudentManager: React.FC<StudentManagerProps> = ({ 
   students, 
   setStudents, 
@@ -55,7 +63,8 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [toast, setToast] = useState<{msg: string, type: 'success' | 'error' | 'info'} | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [tabError, setTabError] = useState<string | null>(null);
 
   const availableExportFields = [
     { key: 'rollNo', label: 'Roll No' },
@@ -128,11 +137,13 @@ const StudentManager: React.FC<StudentManagerProps> = ({
 
   const handleManualSync = async () => {
       setIsSyncing(true);
+      setTabError(null);
       try {
           await dbService.putAll('students', students);
           await dbService.putAll('users', users);
           showToast("Cloud Synchronized Successfully", "success");
-      } catch (e) {
+      } catch (e: any) {
+          setTabError(`Cloud Sync Failed: ${e.message || 'Check connection'}`);
           showToast("Sync Failed", "error");
       } finally {
           setIsSyncing(false);
@@ -196,78 +207,99 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const handleInputChange = (field: keyof typeof formData, value: any) => {
-    if (field === 'name') setNameError(null);
+    setFormError(null);
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAddStudent = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^[a-zA-Z ]+$/.test(formData.name || '')) {
-      setNameError("Name must contain letters and spaces only.");
-      return;
+    setFormError(null);
+
+    try {
+        // Validation Checks
+        if (!/^[a-zA-Z. ]+$/.test(formData.name || '')) {
+          setFormError("Name must contain letters, dots, or spaces only.");
+          return;
+        }
+
+        const cleanPhone = (formData.phone || '').replace(/\D/g, '').slice(-10);
+        if (cleanPhone.length !== 10) {
+          setFormError("Enter a valid 10-digit primary phone number.");
+          return;
+        }
+
+        // Duplicate Roll No check in SAME class
+        const isDuplicateRoll = students.some(s => 
+            s.id !== formData.id && 
+            s.rollNo === formData.rollNo && 
+            s.className === formData.className &&
+            (s.medium || 'English') === (formData.medium || 'English')
+        );
+        if (isDuplicateRoll) {
+            setFormError(`Roll No ${formData.rollNo} already exists in ${formData.className} (${formData.medium}).`);
+            return;
+        }
+
+        const studentId = formData.id || generateSafeId();
+        const newStudent: Student = {
+          id: studentId,
+          name: (formData.name || '').trim(),
+          mothersName: (formData.mothersName || '').trim(),
+          rollNo: (formData.rollNo || '').trim(),
+          className: formData.className || 'Class 1',
+          medium: (formData.medium as any) || 'English',
+          dob: formData.dob || '',
+          placeOfBirth: formData.placeOfBirth || '',
+          address: formData.address || '',
+          phone: cleanPhone,
+          alternatePhone: (formData.alternatePhone || '').replace(/\D/g, ''),
+          aadharNo: (formData.aadharNo || '').replace(/\D/g, ''),
+          apaarId: (formData.apaarId || '').trim(),
+          caste: (formData.caste || '').trim(),
+          bankName: (formData.bankName || '').trim(),
+          accountNo: (formData.accountNo || '').trim(),
+          ifscCode: (formData.ifscCode || '').trim().toUpperCase(),
+          customFields: formData.customFields || {}
+        };
+
+        const { username, password } = generateCredentials(newStudent, users);
+        
+        setUsers(prev => {
+          const existingUser = prev.find(u => u.linkedStudentId === studentId);
+          const userPayload = { 
+            id: existingUser?.id || generateSafeId(),
+            username: formData.customId || existingUser?.username || username,
+            password: formData.customPass || existingUser?.password || password,
+            name: newStudent.name,
+            role: 'student' as const,
+            linkedStudentId: studentId
+          };
+
+          if (existingUser) {
+            return prev.map(u => u.linkedStudentId === studentId ? userPayload : u);
+          } else {
+            return [...prev, userPayload];
+          }
+        });
+
+        if (formData.id) {
+          setStudents(prev => prev.map(s => s.id === formData.id ? newStudent : s));
+          showToast("Profile Updated", "success");
+        } else {
+          setStudents(prev => [...prev, newStudent]);
+          showToast("Student Added!", "success");
+        }
+        
+        setIsModalOpen(false);
+        resetForm();
+    } catch (err: any) {
+        setFormError(`Critical Error: ${err.message || 'Submission failed'}`);
     }
-    if (!/^\d{10}$/.test(formData.phone || '')) {
-      alert("Phone must be 10 digits.");
-      return;
-    }
-
-    const studentId = formData.id || crypto.randomUUID();
-    const newStudent: Student = {
-      id: studentId,
-      name: (formData.name || '').trim(),
-      mothersName: (formData.mothersName || '').trim(),
-      rollNo: formData.rollNo || '',
-      className: formData.className || 'Class 1',
-      medium: (formData.medium as any) || 'English',
-      dob: formData.dob || '',
-      placeOfBirth: formData.placeOfBirth || '',
-      address: formData.address || '',
-      phone: formData.phone || '',
-      alternatePhone: formData.alternatePhone || '',
-      aadharNo: formData.aadharNo || '',
-      apaarId: formData.apaarId || '',
-      caste: formData.caste || '',
-      bankName: formData.bankName || '',
-      accountNo: formData.accountNo || '',
-      ifscCode: formData.ifscCode || '',
-      customFields: formData.customFields || {}
-    };
-
-    const { username, password } = generateCredentials(newStudent, users);
-    
-    setUsers(prev => {
-      const existingUser = prev.find(u => u.linkedStudentId === studentId);
-      const userPayload = { 
-        id: existingUser?.id || crypto.randomUUID(),
-        username: formData.customId || existingUser?.username || username,
-        password: formData.customPass || existingUser?.password || password,
-        name: newStudent.name,
-        role: 'student' as const,
-        linkedStudentId: studentId
-      };
-
-      if (existingUser) {
-        return prev.map(u => u.linkedStudentId === studentId ? userPayload : u);
-      } else {
-        return [...prev, userPayload];
-      }
-    });
-
-    if (formData.id) {
-      setStudents(prev => prev.map(s => s.id === formData.id ? newStudent : s));
-      showToast("Profile Updated", "success");
-    } else {
-      setStudents(prev => [...prev, newStudent]);
-      showToast("Student Added! Cloud Syncing...", "success");
-    }
-    
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const resetForm = () => {
     setFormData({ name: '', mothersName: '', rollNo: '', className: 'Class 1', medium: 'English', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', aadharNo: '', apaarId: '', caste: '', bankName: '', accountNo: '', ifscCode: '', customFields: {}, customId: '', customPass: '' });
-    setNameError(null);
+    setFormError(null);
     setShowAdditionalFields(false);
   };
 
@@ -279,7 +311,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         customId: user?.username || '', 
         customPass: user?.password || '' 
     });
-    setNameError(null);
+    setFormError(null);
     setShowAdditionalFields(true);
     setIsModalOpen(true);
   };
@@ -330,7 +362,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
       const importedStudents: Student[] = [];
       const newUsers: User[] = [];
       data.forEach((row: any) => {
-        const studentId = crypto.randomUUID();
+        const studentId = generateSafeId();
         const s: Student = {
           id: studentId,
           name: (row['Full Name'] || row['Name'] || '').toString().trim(),
@@ -342,7 +374,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           placeOfBirth: (row['Place of Birth'] || '').toString(),
           phone: (row['Phone'] || '').toString().replace(/\D/g, ''),
           alternatePhone: (row['Alt Phone'] || '').toString().replace(/\D/g, ''),
-          aadharNo: (row['Aadhar Card'] || row['Aadhar'] || '').toString(),
+          aadharNo: (row['Aadhar Card'] || row['Aadhar'] || '').toString().replace(/\D/g, ''),
           apaarId: (row['APAAR ID'] || row['Apaar'] || '').toString(),
           caste: (row['Caste'] || '').toString(),
           bankName: (row['Bank Name'] || '').toString(),
@@ -355,7 +387,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           importedStudents.push(s);
           const creds = generateCredentials(s, [...users, ...newUsers]);
           newUsers.push({
-            id: crypto.randomUUID(),
+            id: generateSafeId(),
             username: creds.username,
             password: creds.password,
             name: s.name,
@@ -449,6 +481,16 @@ const StudentManager: React.FC<StudentManagerProps> = ({
             <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-700 text-white rounded-xl hover:bg-indigo-800 text-[10px] font-black uppercase tracking-widest transition-all shadow-lg whitespace-nowrap"><UserPlus size={18} /> New Student</button>
         </div>
       </div>
+
+      {tabError && (
+          <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl flex items-center gap-3 text-rose-800 animate-in slide-in-from-top-2">
+              <AlertTriangle size={20} />
+              <div>
+                  <p className="text-sm font-black uppercase tracking-tight">Technical Error Encountered</p>
+                  <p className="text-xs font-medium opacity-80">{tabError}</p>
+              </div>
+          </div>
+      )}
 
       {/* STUDENT LIST VIEW TABLE */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -695,6 +737,12 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors"><X size={24}/></button>
                         </div>
+                        {formError && (
+                            <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-700 animate-in fade-in slide-in-from-top-1">
+                                <AlertCircle size={18} />
+                                <span className="text-xs font-black uppercase tracking-tight">{formError}</span>
+                            </div>
+                        )}
                     </div>
                     <form onSubmit={handleAddStudent} className="flex flex-col flex-1 overflow-hidden">
                         <div className="flex-1 overflow-y-auto px-8 pb-8 space-y-6">
@@ -702,8 +750,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                             <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Full Name</label>
-                                    <input id="student-name-input" type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className={`w-full px-4 py-3 bg-white border ${nameError ? 'border-rose-500 bg-rose-50/30 ring-2 ring-rose-100' : 'border-slate-200'} rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] transition-all shadow-sm`} placeholder="e.g. Rahul Sharma" required />
-                                    {nameError && <p className="text-[10px] text-rose-600 font-bold mt-1.5 flex items-center gap-1 animate-in slide-in-from-top-1"><AlertCircle size={12}/> {nameError}</p>}
+                                    <input id="student-name-input" type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] transition-all shadow-sm`} placeholder="e.g. Rahul Sharma" required />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Mother's Name</label>
@@ -732,7 +779,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
-                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} required />
+                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} required />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Place of Birth</label>
@@ -771,7 +818,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="col-span-2">
                                                 <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Alt. Phone</label>
-                                                <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={10} />
+                                                <input type="tel" value={formData.alternatePhone} onChange={(e) => handleInputChange('alternatePhone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} />
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 ml-0.5 tracking-wider">Access ID (Login Username)</label>
@@ -807,7 +854,9 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                         </div>
                         <div className="px-8 py-6 shrink-0 flex items-center justify-end gap-6 bg-white border-t border-slate-50 sticky bottom-0">
                             <button type="button" onClick={() => setIsModalOpen(false)} className="text-base font-semibold text-slate-500 hover:text-slate-900">Cancel</button>
-                            <button type="submit" className="px-10 py-3.5 bg-indigo-600 text-white rounded-xl text-base font-bold shadow-lg shadow-indigo-100 hover:bg-[#818cf8] transition-all active:scale-95 leading-none glow-indigo">Save & Sync</button>
+                            <button type="submit" disabled={isSyncing} className="px-10 py-3.5 bg-indigo-600 text-white rounded-xl text-base font-bold shadow-lg shadow-indigo-100 hover:bg-[#818cf8] transition-all active:scale-95 leading-none glow-indigo disabled:opacity-50">
+                                {isSyncing ? <RefreshCw size={20} className="animate-spin" /> : 'Save & Sync'}
+                            </button>
                         </div>
                     </form>
                 </div>
