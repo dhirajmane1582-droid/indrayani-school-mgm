@@ -36,7 +36,6 @@ export const initDB = (): Promise<IDBPDatabase> => {
   return dbPromise;
 };
 
-// Robust UUID v4 Generator Fallback for non-secure contexts
 export const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     try {
@@ -67,12 +66,14 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
 
     try {
-      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 10000);
+      const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 15000);
       
       if (error) throw error;
       
-      if (data && data.length > 0) {
+      if (data) {
         const tx = db.transaction(storeName, 'readwrite');
+        // Clear local before putting if it's a full cloud sync to ensure deletion visibility
+        await tx.store.clear();
         for (const item of data) {
           await tx.store.put(item);
         }
@@ -91,23 +92,17 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const conflictColumn = storeName === 'annualRecords' ? 'studentId' : 'id';
 
-    // 1. Save Locally First
+    // 1. Save Locally
     await db.put(storeName, item);
 
-    // 2. Try Cloud Save
-    try {
-      const { error } = await supabase
-        .from(tableName)
-        .upsert(item, { onConflict: conflictColumn });
-      
-      if (error) {
-          const errMsg = error.message || 'Database error';
-          const details = error.details || '';
-          console.error(`Supabase Upsert Error [${storeName}]:`, error);
-          throw new Error(`${errMsg} ${details}`);
-      }
-    } catch (err) {
-      throw err;
+    // 2. Cloud Save
+    const { error } = await supabase
+      .from(tableName)
+      .upsert(item, { onConflict: conflictColumn });
+    
+    if (error) {
+      console.error(`Supabase Upsert Error [${storeName}]:`, error);
+      throw new Error(`Cloud Sync Error: ${error.message}. Table [${tableName}] may be missing new columns. Run 'Repair SQL' in System tab.`);
     }
   },
 
@@ -118,17 +113,22 @@ export const dbService = {
 
     if (!items || items.length === 0) return;
 
+    // Save locally
     const tx = db.transaction(storeName, 'readwrite');
     for (const item of items) {
       await tx.store.put(item);
     }
     await tx.done;
 
-    try {
-      const { error } = await supabase.from(tableName).upsert(items, { onConflict: conflictColumn });
-      if (error) console.error(`Supabase Bulk Error [${storeName}]:`, error.message);
-    } catch (err) {
-      console.error(`Supabase Connection Failed [${storeName}]`);
+    // Upload in chunks to Supabase to prevent large payload errors
+    const chunkSize = 50;
+    for (let i = 0; i < items.length; i += chunkSize) {
+        const chunk = items.slice(i, i + chunkSize);
+        const { error } = await supabase.from(tableName).upsert(chunk, { onConflict: conflictColumn });
+        if (error) {
+          console.error(`Supabase Chunk Error [${storeName}]:`, error);
+          throw new Error(`Cloud Bulk Upload Failed at chunk ${Math.floor(i/chunkSize) + 1}: ${error.message}`);
+        }
     }
   },
 
@@ -138,11 +138,10 @@ export const dbService = {
     const tableName = TABLE_MAP[storeName];
     const idField = (storeName === 'annualRecords') ? 'studentId' : 'id';
 
-    try {
-        await db.delete(storeName, id);
-        await supabase.from(tableName).delete().eq(idField, id);
-    } catch (err) {
-        console.debug(`Supabase Delete [${storeName}] Failed.`);
+    await db.delete(storeName, id);
+    const { error } = await supabase.from(tableName).delete().eq(idField, id);
+    if (error) {
+      console.warn(`Supabase Delete [${storeName}] Failed:`, error.message);
     }
   },
 
@@ -154,8 +153,6 @@ export const dbService = {
     await db.clear(storeName);
     try {
       await supabase.from(tableName).delete().not(idField, 'is', null);
-    } catch (err) {
-      // Silent catch
-    }
+    } catch (err) {}
   }
 };

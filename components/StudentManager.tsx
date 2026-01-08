@@ -133,7 +133,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           await dbService.putAll('users', users);
           showToast("Cloud Synchronized Successfully", "success");
       } catch (e: any) {
-          setTabError(`Cloud Sync Failed: ${e.message || 'Check connection'}`);
+          setTabError(`Cloud Sync Failed: ${e.message || 'Check connection or run Repair SQL'}`);
           showToast("Sync Failed", "error");
       } finally {
           setIsSyncing(false);
@@ -285,7 +285,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
         resetForm();
     } catch (err: any) {
         console.error("Save Error:", err);
-        setFormError(`Technical Error: ${err.message || 'Could not save to database'}. Try running the Repair Script in System tab.`);
+        setFormError(`Cloud Error: ${err.message || 'Check database permissions'}. Ensure SQL Repair script has been run in System tab.`);
     } finally {
         setIsSyncing(false);
     }
@@ -767,19 +767,19 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Religion</label>
-                                    <input type="text" value={formData.religion} onChange={(e) => handleInputChange('religion', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Hindu / Muslim / Sikh" />
+                                    <input type="text" value={formData.religion} onChange={(e) => handleInputChange('religion', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Hindu" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Caste</label>
-                                    <input type="text" value={formData.caste} onChange={(e) => handleInputChange('caste', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Open / OBC" />
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
+                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} required />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Place of Birth</label>
                                     <input type="text" value={formData.placeOfBirth} onChange={(e) => handleInputChange('placeOfBirth', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Mumbai" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
-                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} required />
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Caste</label>
+                                    <input type="text" value={formData.caste} onChange={(e) => handleInputChange('caste', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Open / OBC" />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Aadhar Card No</label>

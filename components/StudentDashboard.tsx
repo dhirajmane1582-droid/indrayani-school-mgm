@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { User, Student, Homework, Exam, StudentResult, AttendanceRecord, Announcement, AnnualRecord, Holiday, getSubjectsForClass } from '../types';
-import { BookOpen, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, Download, X, RefreshCw, Loader2, Eye } from 'lucide-react';
+import { BookOpen, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, Download, X, RefreshCw, Loader2, Eye, ChevronDown } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -152,6 +152,8 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'homework' | 'exams' | 'results' | 'attendance' | 'notices'>('home');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
+
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
   const studentAnnualRecord = useMemo(() => student ? annualRecords.find(r => r.studentId === student.id && r.published) || null : null, [annualRecords, student]);
 
@@ -233,7 +235,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const filteredAttendance = useMemo(() => {
     if (!student) return [];
-    // Automatically cancel/ignore attendance that falls on a holiday
     return attendance.filter(r => r.studentId === student.id && !checkHoliday(r.date));
   }, [attendance, student, holidays]);
 
@@ -445,18 +446,73 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
           )}
 
           {activeTab === 'results' && (
-              <div className="space-y-6 animate-in fade-in zoom-in-95">
+              <div className="space-y-8 animate-in fade-in zoom-in-95">
                   <div className="flex justify-between items-center">
                       <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest"><X size={20}/> Back</button>
                       {studentAnnualRecord && (<button onClick={downloadPDF} disabled={isDownloading} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all">{isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16}/>} Download PDF</button>)}
                   </div>
-                  {studentAnnualRecord ? (
-                      <div className="bg-slate-200 p-4 sm:p-12 rounded-3xl border shadow-inner flex justify-center items-start overflow-x-auto">
-                          <div className="bg-white shadow-2xl scale-75 sm:scale-90 origin-top min-w-[210mm]" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_STRETCH_COLOR}</style>${generatePDFContent()}` }} />
-                      </div>
-                  ) : (
-                      <div className="text-center py-24 bg-white rounded-[2.5rem] border-2 border-dashed border-slate-200 text-slate-400 flex flex-col items-center gap-4"><Eye size={48} className="opacity-20" /><div><p className="font-black text-sm uppercase tracking-widest">Report Not Available</p><p className="text-xs font-medium">Please contact the school office if you expect a report here.</p></div></div>
-                  )}
+
+                  {/* ANNUAL REPORT CARD SECTION */}
+                  <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Annual Progress Card</h3>
+                      {studentAnnualRecord ? (
+                          <div className="bg-slate-200 p-4 sm:p-12 rounded-3xl border shadow-inner flex justify-center items-start overflow-x-auto">
+                              <div className="bg-white shadow-2xl scale-75 sm:scale-90 origin-top min-w-[210mm]" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_STRETCH_COLOR}</style>${generatePDFContent()}` }} />
+                          </div>
+                      ) : (
+                          <div className="p-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-widest">Annual Report Not Generated Yet</div>
+                      )}
+                  </div>
+
+                  {/* EXAM MARKSHEETS SECTION */}
+                  <div className="space-y-4">
+                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Individual Exam Results</h3>
+                      {resultsForStudent.length === 0 ? (
+                          <div className="p-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-widest">No Exam Results Published Yet</div>
+                      ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {resultsForStudent.map(res => {
+                                  const exam = exams.find(e => e.id === res.examId);
+                                  const isExpanded = expandedExamId === res.id;
+                                  const subjects = getSubjectsForClass(student.className, student.medium as 'English' | 'Semi' || 'English');
+                                  
+                                  return (
+                                      <div key={res.id} className={`bg-white rounded-2xl border transition-all ${isExpanded ? 'border-indigo-500 ring-4 ring-indigo-50' : 'border-slate-100 shadow-sm hover:border-slate-300'}`}>
+                                          <div onClick={() => setExpandedExamId(isExpanded ? null : res.id)} className="p-5 flex justify-between items-center cursor-pointer">
+                                              <div>
+                                                  <div className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">{exam?.type || 'Examination'}</div>
+                                                  <div className="text-lg font-black text-slate-800 uppercase tracking-tight">{exam?.title || 'Unknown Exam'}</div>
+                                              </div>
+                                              <ChevronDown size={20} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-180 text-indigo-500' : ''}`} />
+                                          </div>
+                                          {isExpanded && (
+                                              <div className="px-5 pb-5 pt-0 animate-in slide-in-from-top-2">
+                                                  <div className="bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                                                      <table className="w-full text-left text-sm">
+                                                          <thead className="bg-slate-100/50 text-[10px] font-black uppercase text-slate-400 tracking-widest border-b border-slate-100">
+                                                              <tr><th className="px-4 py-2">Subject</th><th className="px-4 py-2 text-right">Marks</th></tr>
+                                                          </thead>
+                                                          <tbody className="divide-y divide-slate-100">
+                                                              {Object.entries(res.marks).map(([subId, mark]) => {
+                                                                  const subName = subjects.find(s => s.id === subId)?.name || subId;
+                                                                  return (
+                                                                      <tr key={subId}>
+                                                                          <td className="px-4 py-2 font-bold text-slate-600 uppercase text-xs">{subName}</td>
+                                                                          <td className="px-4 py-2 text-right font-black text-slate-800">{mark}</td>
+                                                                      </tr>
+                                                                  );
+                                                              })}
+                                                          </tbody>
+                                                      </table>
+                                                  </div>
+                                              </div>
+                                          )}
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      )}
+                  </div>
               </div>
           )}
 

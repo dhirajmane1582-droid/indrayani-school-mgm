@@ -36,23 +36,21 @@ CREATE TABLE IF NOT EXISTS students (
   "customFields" JSONB DEFAULT '{}'::jsonb
 );
 
--- 2. ENSURE NEW COLUMNS EXIST (FOR EXISTING DATABASES)
--- This part makes sure Mother's Name, Religion, and PEN No. are added to your current cloud data.
+-- 2. ENSURE ALL STUDENT COLUMNS EXIST
 DO $$ 
 BEGIN 
-    BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN religion TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN medium TEXT DEFAULT 'English'; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "placeOfBirth" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "alternatePhone" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "aadharNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "apaarId" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN "penNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN caste TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "mothersName" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS religion TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS medium TEXT DEFAULT 'English'; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "placeOfBirth" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "alternatePhone" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "aadharNo" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "apaarId" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "penNo" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS caste TEXT; EXCEPTION WHEN others THEN NULL; END;
 END $$;
 
 -- 3. REPAIR/CREATE USERS TABLE
--- Added ON DELETE CASCADE to "linkedStudentId" so deleting a student wipes their login automatically.
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
@@ -88,7 +86,22 @@ CREATE TABLE IF NOT EXISTS annual_records (
   published BOOLEAN DEFAULT false
 );
 
--- 5. REPAIR/CREATE RESULTS TABLE
+-- 5. ENSURE ALL ANNUAL RECORD COLUMNS EXIST
+DO $$ 
+BEGIN 
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "hobbiesSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "hobbiesSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "improvementsSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "improvementsSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "specialImprovementsSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "specialImprovementsSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "necessaryImprovementSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "necessaryImprovementSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "overallPercentage" TEXT; EXCEPTION WHEN others THEN NULL; END;
+    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "resultStatus" TEXT; EXCEPTION WHEN others THEN NULL; END;
+END $$;
+
+-- 6. REPAIR/CREATE RESULTS TABLE
 CREATE TABLE IF NOT EXISTS results (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
@@ -98,13 +111,17 @@ CREATE TABLE IF NOT EXISTS results (
   published BOOLEAN DEFAULT false
 );
 
--- 6. DISABLE RLS (Security handled by App Logic)
+-- 7. DISABLE RLS (Security handled by App Logic)
 ALTER TABLE students DISABLE ROW LEVEL SECURITY;
 ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE results DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE homework DISABLE ROW LEVEL SECURITY;
+ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fees DISABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
 
--- 7. CLEAR CACHE
+-- 8. CLEAR CACHE
 NOTIFY pgrst, 'reload schema';
 `;
 
@@ -144,7 +161,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes Religion, Mother's Name, PEN & Login Auto-Cleanup</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes PEN No, Religion & Sync Errors</p>
                 </div>
             </div>
             <button 
@@ -160,17 +177,12 @@ NOTIFY pgrst, 'reload schema';
                 <div className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-3">
                     <p className="text-sm font-bold text-indigo-100 flex items-center gap-2">
                         <AlertTriangle size={16} className="text-amber-400" /> 
-                        Cloud Fix Required
+                        Cloud Sync Error Fix
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To enable <strong>Mother's Name</strong>, <strong>Religion</strong>, <strong>PEN No.</strong> and <strong>Login Auto-Deletion</strong>, you must update your Supabase schema using the script below.
+                        If you are getting "Cloud Error" when saving, your cloud database is likely missing new columns like <strong>PEN No.</strong> or <strong>Caste</strong>. 
+                        <strong> Copy this script and run it in the Supabase SQL Editor.</strong>
                     </p>
-                    <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
-                        <li>Click <strong>Copy</strong> on the script.</li>
-                        <li>Click <strong>Open Supabase Editor</strong>.</li>
-                        <li>Paste and click <strong>Run</strong>.</li>
-                        <li>Refresh the app.</li>
-                    </ol>
                 </div>
                 <div className="relative">
                     <pre className="bg-black/40 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[250px] text-emerald-400 border border-white/5">
@@ -190,7 +202,7 @@ NOTIFY pgrst, 'reload schema';
           <div className="bg-slate-100 p-3 rounded-2xl text-slate-600"><Database size={24} /></div>
           <div>
             <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">System Backup</h2>
-            <p className="text-sm text-slate-500 font-medium">Full database snapshots.</p>
+            <p className="text-sm text-slate-500 font-medium">Download local snapshots.</p>
           </div>
         </div>
 
@@ -198,16 +210,16 @@ NOTIFY pgrst, 'reload schema';
           <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col justify-between group hover:border-indigo-300 transition-all">
             <div>
               <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform"><DownloadCloud size={24} /></div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Create Backup</h3>
-              <p className="text-xs text-slate-500 leading-relaxed mb-6">Download a JSON file containing all school data.</p>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Local Backup</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-6">Download a JSON file containing all data currently on this device.</p>
             </div>
             <button onClick={onExport} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-lg shadow-indigo-100 active:scale-95 transition-all flex items-center justify-center gap-2"><FileJson size={18} /> Download Backup</button>
           </div>
           <div className="bg-rose-50/30 p-6 rounded-2xl border border-rose-100 flex flex-col justify-between group hover:border-rose-300 transition-all">
             <div>
               <div className="w-12 h-12 rounded-xl bg-white border border-rose-100 flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform"><UploadCloud size={24} /></div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Restore Sync</h3>
-              <p className="text-xs text-slate-500 leading-relaxed mb-6">Upload a backup file to overwrite data.</p>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Restore All</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mb-6">Upload a backup file to overwrite all local and cloud data.</p>
             </div>
             <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
             <button onClick={() => fileInputRef.current?.click()} className="w-full py-4 bg-white text-rose-600 border border-rose-200 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"><ShieldAlert size={18} /> Import Backup</button>
