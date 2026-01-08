@@ -194,8 +194,12 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       setIsSyncing(true);
       try {
           const record = { ...getRecord(studentId), published: !currentStatus };
-          // Update local state first for UX
-          setAnnualRecords(prev => prev.map(r => r.studentId === studentId ? record : r));
+          // Update local state first for UX, ensuring we add if it's new
+          setAnnualRecords(prev => {
+              const exists = prev.some(r => r.studentId === studentId);
+              if (exists) return prev.map(r => r.studentId === studentId ? record : r);
+              return [...prev, record];
+          });
           // Update cloud for visibility
           await dbService.put('annualRecords', record);
       } finally {

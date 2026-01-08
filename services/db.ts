@@ -70,7 +70,7 @@ export const dbService = {
       
       if (error) throw error;
       
-      if (data) {
+      if (data && Array.isArray(data)) {
         const tx = db.transaction(storeName, 'readwrite');
         // Clear local before putting if it's a full cloud sync to ensure deletion visibility
         await tx.store.clear();

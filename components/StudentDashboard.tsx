@@ -155,7 +155,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
 
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
-  const studentAnnualRecord = useMemo(() => student ? annualRecords.find(r => r.studentId === student.id && r.published) || null : null, [annualRecords, student]);
+  
+  // Robust check for published status to handle varying DB boolean representations
+  const studentAnnualRecord = useMemo(() => {
+    if (!student) return null;
+    return annualRecords.find(r => 
+        r.studentId === student.id && 
+        (r.published === true || r.published === 'true' || r.published === 1)
+    ) || null;
+  }, [annualRecords, student]);
 
   const checkHoliday = (dateStr: string) => holidays.find(h => h.endDate ? (dateStr >= h.date && dateStr <= h.endDate) : h.date === dateStr);
 
@@ -200,7 +208,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const resultsForStudent = useMemo(() => {
     if (!student) return [];
-    return results.filter(r => r.studentId === student.id && r.published);
+    return results.filter(r => r.studentId === student.id && (r.published === true || r.published === 'true' || r.published === 1));
   }, [results, student]);
 
   const noticesForStudent = useMemo(() => {
@@ -460,7 +468,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               <div className="bg-white shadow-2xl scale-75 sm:scale-90 origin-top min-w-[210mm]" dangerouslySetInnerHTML={{ __html: `<style>${PDF_STYLES_STRETCH_COLOR}</style>${generatePDFContent()}` }} />
                           </div>
                       ) : (
-                          <div className="p-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-widest">Annual Report Not Generated Yet</div>
+                          <div className="p-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-slate-400 font-bold uppercase text-[10px] tracking-widest">Annual Report Not Generated or Published Yet</div>
                       )}
                   </div>
 
