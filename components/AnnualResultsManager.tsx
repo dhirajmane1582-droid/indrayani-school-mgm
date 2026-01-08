@@ -112,7 +112,7 @@ const PDF_STYLES_STRETCH = `
     .result-main span { color: #f97316; }
     .reopening { font-size: 11px; font-weight: bold; margin-top: 4px; color: #000; }
 
-    .signatures-row { display: flex; justify-content: space-between; padding: 0 15px; margin-top: 10px; }
+    .signatures-row { display: flex; justify-content: space-between; padding: 0 40px; margin-top: 10px; }
     .sig-block { width: 220px; border-top: 2px solid #000000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000000; }
 `;
 
@@ -157,8 +157,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       };
   };
 
-  const handleRecordChange = async (studentId: string, field: keyof AnnualRecord, value: any, nestedKey?: string) => {
-      let updatedRecord: AnnualRecord;
+  const handleRecordChange = (studentId: string, field: keyof AnnualRecord, value: any, nestedKey?: string) => {
       setAnnualRecords(prev => {
           const idx = prev.findIndex(r => r.studentId === studentId);
           let rec = idx >= 0 ? { ...prev[idx] } : { ...getRecord(studentId) };
@@ -169,36 +168,36 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
              // @ts-ignore
              rec[field] = value;
           }
-          updatedRecord = rec;
           const newArr = [...prev];
           if (idx >= 0) newArr[idx] = rec;
           else newArr.push(rec);
           return newArr;
       });
-
-      if (field === 'published' || field === 'resultStatus') {
-          setIsSyncing(true);
-          try {
-              // Ensure immediate sync for publication
-              const updatedRec = { ...getRecord(studentId) };
-              // @ts-ignore
-              if(nestedKey) updatedRec[field] = { ...updatedRec[field], [nestedKey]: value }; else updatedRec[field] = value;
-              await dbService.put('annualRecords', updatedRec);
-          } finally {
-              setIsSyncing(false);
-          }
-      }
   };
 
   const handleFinishEditing = async (studentId: string) => {
       setIsSyncing(true);
       try {
           const record = getRecord(studentId);
-          // Explicit individual cloud push to bypass background queue for immediate student visibility
+          // FORCE CLOUD SYNC: Ensure the record is sent to Supabase immediately
           await dbService.put('annualRecords', record);
           setEditingStudentId(null);
       } catch (err) {
           console.error("Manual Sync Error:", err);
+          alert("Network Error: Could not publish results to cloud. Check internet.");
+      } finally {
+          setIsSyncing(false);
+      }
+  };
+
+  const handleTogglePublication = async (studentId: string, currentStatus: boolean) => {
+      setIsSyncing(true);
+      try {
+          const record = { ...getRecord(studentId), published: !currentStatus };
+          // Update local state first for UX
+          setAnnualRecords(prev => prev.map(r => r.studentId === studentId ? record : r));
+          // Update cloud for visibility
+          await dbService.put('annualRecords', record);
       } finally {
           setIsSyncing(false);
       }
@@ -207,18 +206,21 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
   const handleBulkPublish = async (pub: boolean) => {
       if (selectedStudentIds.size === 0) return;
       setIsSyncing(true);
-      const toSync: AnnualRecord[] = [];
-      const updatedRecords = [...annualRecords];
-      selectedStudentIds.forEach(sid => {
-          const idx = updatedRecords.findIndex(r => r.studentId === sid);
-          let rec = idx >= 0 ? { ...updatedRecords[idx], published: pub } : { ...getRecord(sid), published: pub };
-          if (idx >= 0) updatedRecords[idx] = rec;
-          else updatedRecords.push(rec);
-          toSync.push(rec);
-      });
-      setAnnualRecords(updatedRecords);
-      try { 
-          await dbService.putAll('annualRecords', toSync); 
+      try {
+          const toSync: AnnualRecord[] = [];
+          const updatedRecords = [...annualRecords];
+          
+          selectedStudentIds.forEach(sid => {
+              const idx = updatedRecords.findIndex(r => r.studentId === sid);
+              let rec = idx >= 0 ? { ...updatedRecords[idx], published: pub } : { ...getRecord(sid), published: pub };
+              if (idx >= 0) updatedRecords[idx] = rec;
+              else updatedRecords.push(rec);
+              toSync.push(rec);
+          });
+          
+          setAnnualRecords(updatedRecords);
+          // CRITICAL: Ensure batch update hits cloud immediately
+          await dbService.putAll('annualRecords', toSync);
           setSelectedStudentIds(new Set()); 
       } finally { 
           setIsSyncing(false); 
@@ -364,7 +366,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                         <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-2">Final Academic Standing</label>
                         <select value={record.resultStatus} onChange={(e) => handleRecordChange(editingStudent.id, 'resultStatus', e.target.value)} className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 font-black text-xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"><option value="PASS">PASS</option><option value="FAIL">FAIL</option></select>
                     </div>
-                    <button onClick={() => handleRecordChange(editingStudent.id, 'published', !record.published)} disabled={isSyncing} className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
+                    <button onClick={() => handleTogglePublication(editingStudent.id, record.published)} disabled={isSyncing} className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 ${record.published ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}>
                         {isSyncing ? 'Syncing...' : (record.published ? 'Status: Published' : 'Status: Draft')}
                     </button>
                 </section>

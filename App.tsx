@@ -41,27 +41,10 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabView>('home');
   const [selectedClass, setSelectedClass] = useState<string>('');
 
-  const saveTimeoutRef = useRef<Record<string, number>>({});
   const isInitialSyncDone = useRef(false);
-  const isSavingRef = useRef(false);
   
-  const scheduleSave = useCallback((store: string, data: any[]) => {
-    // CRITICAL: Prevent saving local state back to cloud until the cloud sync has finished.
-    if (!isInitialSyncDone.current) return;
-    
-    if (saveTimeoutRef.current[store]) {
-      window.clearTimeout(saveTimeoutRef.current[store]);
-    }
-    saveTimeoutRef.current[store] = window.setTimeout(async () => {
-      isSavingRef.current = true;
-      await dbService.putAll(store, data);
-      isSavingRef.current = false;
-    }, 1500);
-  }, []);
-
   const handleSync = useCallback(async (forceCloud = true) => {
-    // Don't sync from cloud if we are currently saving local data to cloud
-    if (isSyncing || isSavingRef.current) return;
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
       const stores = [
@@ -69,8 +52,25 @@ const App: React.FC = () => {
         'customFields', 'holidays', 'users', 'fees', 'homework', 'announcements'
       ];
 
-      // Step 1: Load Local First (Instant for UI)
-      if (!isInitialSyncDone.current) {
+      // Step 1: Force Cloud Fetch for the "Source of Truth"
+      if (forceCloud) {
+        const fetchResults = await Promise.allSettled(stores.map(s => dbService.getAll(s)));
+        const getVal = (idx: number, fallback: any[] = []) => 
+          fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
+
+        if (fetchResults[0].status === 'fulfilled') setStudents(getVal(0));
+        if (fetchResults[1].status === 'fulfilled') setAttendance(getVal(1));
+        if (fetchResults[2].status === 'fulfilled') setExams(getVal(2));
+        if (fetchResults[3].status === 'fulfilled') setResults(getVal(3));
+        if (fetchResults[4].status === 'fulfilled') setAnnualRecords(getVal(4));
+        if (fetchResults[5].status === 'fulfilled') setCustomFieldDefs(getVal(5));
+        if (fetchResults[6].status === 'fulfilled') setHolidays(getVal(6));
+        if (fetchResults[7].status === 'fulfilled') setUsers(getVal(7));
+        if (fetchResults[8].status === 'fulfilled') setFees(getVal(8));
+        if (fetchResults[9].status === 'fulfilled') setHomework(getVal(9));
+        if (fetchResults[10].status === 'fulfilled') setAnnouncements(getVal(10));
+      } else {
+        // Fallback to local only if cloud is explicitly not requested
         const localData = await Promise.all(stores.map(s => dbService.getLocal(s)));
         if (localData[0].length) setStudents(localData[0]);
         if (localData[1].length) setAttendance(localData[1]);
@@ -83,27 +83,6 @@ const App: React.FC = () => {
         if (localData[8].length) setFees(localData[8]);
         if (localData[9].length) setHomework(localData[9]);
         if (localData[10].length) setAnnouncements(localData[10]);
-        setIsLoaded(true); 
-      }
-
-      // Step 2: Background Cloud Sync (The "Truth" from other devices)
-      if (forceCloud) {
-        const fetchResults = await Promise.allSettled(stores.map(s => dbService.getAll(s)));
-        const getVal = (idx: number, fallback: any[] = []) => 
-          fetchResults[idx].status === 'fulfilled' ? (fetchResults[idx] as PromiseFulfilledResult<any>).value : fallback;
-
-        // Only update state if the fetch was successful and we aren't currently editing
-        if (fetchResults[0].status === 'fulfilled') setStudents(getVal(0));
-        if (fetchResults[1].status === 'fulfilled') setAttendance(getVal(1));
-        if (fetchResults[2].status === 'fulfilled') setExams(getVal(2));
-        if (fetchResults[3].status === 'fulfilled') setResults(getVal(3));
-        if (fetchResults[4].status === 'fulfilled') setAnnualRecords(getVal(4));
-        if (fetchResults[5].status === 'fulfilled') setCustomFieldDefs(getVal(5));
-        if (fetchResults[6].status === 'fulfilled') setHolidays(getVal(6));
-        if (fetchResults[7].status === 'fulfilled') setUsers(getVal(7));
-        if (fetchResults[8].status === 'fulfilled') setFees(getVal(8));
-        if (fetchResults[9].status === 'fulfilled') setHomework(getVal(9));
-        if (fetchResults[10].status === 'fulfilled') setAnnouncements(getVal(10));
       }
       
       isInitialSyncDone.current = true;
@@ -118,22 +97,6 @@ const App: React.FC = () => {
   useEffect(() => {
     handleSync();
   }, []); 
-
-  // REMOVED: Auto-sync on window focus. This was causing new data to be overwritten 
-  // by old cloud data before the background save could finish.
-
-  // Data persistence effects
-  useEffect(() => { scheduleSave('students', students); }, [students, scheduleSave]);
-  useEffect(() => { scheduleSave('attendance', attendance); }, [attendance, scheduleSave]);
-  useEffect(() => { scheduleSave('exams', exams); }, [exams, scheduleSave]);
-  useEffect(() => { scheduleSave('results', results); }, [results, scheduleSave]);
-  useEffect(() => { scheduleSave('annualRecords', annualRecords); }, [annualRecords, scheduleSave]);
-  useEffect(() => { scheduleSave('customFields', customFieldDefs); }, [customFieldDefs, scheduleSave]);
-  useEffect(() => { scheduleSave('holidays', holidays); }, [holidays, scheduleSave]);
-  useEffect(() => { scheduleSave('users', users); }, [users, scheduleSave]);
-  useEffect(() => { scheduleSave('fees', fees); }, [fees, scheduleSave]);
-  useEffect(() => { scheduleSave('homework', homework); }, [homework, scheduleSave]);
-  useEffect(() => { scheduleSave('announcements', announcements); }, [announcements, scheduleSave]);
 
   useEffect(() => {
     if (currentUser) sessionStorage.setItem('et_session', JSON.stringify(currentUser));
