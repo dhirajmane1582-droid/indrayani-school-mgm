@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Student, CLASSES, SPECIFIC_CLASSES, CustomFieldDefinition, User } from '../types';
-import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle, Building2, UserRound, Plus, Minus, AlertTriangle, MoonStar } from 'lucide-react';
+import { Search, Filter, Trash2, X, GraduationCap, MapPin, Phone, Calendar, UserPlus, ChevronDown, CheckCircle2, Download, RefreshCw, Smartphone, MapPinned, Edit3, Trash, Fingerprint, IdCard, Users2, FileOutput, CheckSquare, Square, Eye, ShieldCheck, Copy, FileDown, Upload, AlertCircle, Building2, UserRound, Plus, Minus, AlertTriangle, MoonStar, Hash } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { dbService, generateUUID } from '../services/db';
 
@@ -71,6 +71,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     { key: 'alternatePhone', label: 'Alt Phone' },
     { key: 'aadharNo', label: 'Aadhar Card' },
     { key: 'apaarId', label: 'APAAR ID' },
+    { key: 'penNo', label: 'PEN No.' },
     { key: 'caste', label: 'Caste' },
     { key: 'address', label: 'Address' }
   ];
@@ -91,6 +92,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
     alternatePhone: '',
     aadharNo: '',
     apaarId: '',
+    penNo: '',
     caste: '',
     customFields: {},
     customId: '',
@@ -246,6 +248,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           alternatePhone: (formData.alternatePhone || '').replace(/\D/g, ''),
           aadharNo: (formData.aadharNo || '').replace(/\D/g, ''),
           apaarId: (formData.apaarId || '').trim(),
+          penNo: (formData.penNo || '').trim(),
           caste: (formData.caste || '').trim(),
           customFields: formData.customFields || {}
         };
@@ -289,7 +292,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const resetForm = () => {
-    setFormData({ name: '', mothersName: '', rollNo: '', className: 'Class 1', medium: 'English', religion: '', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', aadharNo: '', apaarId: '', caste: '', customFields: {}, customId: '', customPass: '' });
+    setFormData({ name: '', mothersName: '', rollNo: '', className: 'Class 1', medium: 'English', religion: '', dob: '', placeOfBirth: '', address: '', phone: '', alternatePhone: '', aadharNo: '', apaarId: '', penNo: '', caste: '', customFields: {}, customId: '', customPass: '' });
     setFormError(null);
     setShowAdditionalFields(false);
   };
@@ -332,7 +335,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
   };
 
   const downloadImportTemplate = () => {
-    const headers = [['Roll No', 'Full Name', 'Mother Name', 'Class', 'Medium', 'Religion', 'DOB (YYYY-MM-DD)', 'Place of Birth', 'Phone', 'Alt Phone', 'Aadhar Card', 'APAAR ID', 'Caste', 'Address']];
+    const headers = [['Roll No', 'Full Name', 'Mother Name', 'Class', 'Medium', 'Religion', 'DOB (YYYY-MM-DD)', 'Place of Birth', 'Phone', 'Alt Phone', 'Aadhar Card', 'APAAR ID', 'PEN No.', 'Caste', 'Address']];
     const ws = XLSX.utils.aoa_to_sheet(headers);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -368,6 +371,7 @@ const StudentManager: React.FC<StudentManagerProps> = ({
           alternatePhone: (row['Alt Phone'] || '').toString().replace(/\D/g, ''),
           aadharNo: (row['Aadhar Card'] || row['Aadhar'] || '').toString().replace(/\D/g, ''),
           apaarId: (row['APAAR ID'] || row['Apaar'] || '').toString(),
+          penNo: (row['PEN No.'] || row['PEN'] || '').toString().trim(),
           caste: (row['Caste'] || '').toString(),
           address: (row['Address'] || '').toString(),
           customFields: {}
@@ -558,6 +562,10 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium uppercase">
                                         <IdCard size={10} />
                                         <span>APAAR:</span> {student.apaarId || '-'}
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 font-medium uppercase">
+                                        <Hash size={10} />
+                                        <span>PEN:</span> {student.penNo || '-'}
                                     </div>
                                 </td>
                                 <td className="px-4 py-4 font-bold text-slate-600 uppercase">
@@ -762,16 +770,16 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                     <input type="text" value={formData.religion} onChange={(e) => handleInputChange('religion', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Hindu / Muslim / Sikh" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
-                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} required />
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Caste</label>
+                                    <input type="text" value={formData.caste} onChange={(e) => handleInputChange('caste', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Open / OBC" />
                                 </div>
                                 <div className="col-span-1">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Place of Birth</label>
                                     <input type="text" value={formData.placeOfBirth} onChange={(e) => handleInputChange('placeOfBirth', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Mumbai" />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Caste</label>
-                                    <input type="text" value={formData.caste} onChange={(e) => handleInputChange('caste', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="e.g. Open / OBC" />
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Primary Phone</label>
+                                    <input type="tel" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="10 digits" maxLength={15} required />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">Aadhar Card No</label>
@@ -780,6 +788,10 @@ const StudentManager: React.FC<StudentManagerProps> = ({
                                 <div className="col-span-2">
                                     <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">APAAR ID</label>
                                     <input type="text" value={formData.apaarId} onChange={(e) => handleInputChange('apaarId', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="Govt. Identity ID" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-bold text-slate-700 mb-1.5 ml-0.5">PEN No.</label>
+                                    <input type="text" value={formData.penNo} onChange={(e) => handleInputChange('penNo', e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-900 outline-none focus:border-[#818cf8] shadow-sm" placeholder="Permanent Education Number" />
                                 </div>
                             </div>
 

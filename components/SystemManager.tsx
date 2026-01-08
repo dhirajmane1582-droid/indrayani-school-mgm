@@ -31,12 +31,13 @@ CREATE TABLE IF NOT EXISTS students (
   "alternatePhone" TEXT,
   "aadharNo" TEXT,
   "apaarId" TEXT,
+  "penNo" TEXT,
   caste TEXT,
   "customFields" JSONB DEFAULT '{}'::jsonb
 );
 
 -- 2. ENSURE NEW COLUMNS EXIST (FOR EXISTING DATABASES)
--- This part makes sure Mother's Name and Religion are added to your current cloud data.
+-- This part makes sure Mother's Name, Religion, and PEN No. are added to your current cloud data.
 DO $$ 
 BEGIN 
     BEGIN ALTER TABLE students ADD COLUMN "mothersName" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
@@ -46,6 +47,7 @@ BEGIN
     BEGIN ALTER TABLE students ADD COLUMN "alternatePhone" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "aadharNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN "apaarId" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
+    BEGIN ALTER TABLE students ADD COLUMN "penNo" TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
     BEGIN ALTER TABLE students ADD COLUMN caste TEXT; EXCEPTION WHEN duplicate_column THEN NULL; END;
 END $$;
 
@@ -142,7 +144,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes Religion, Mother's Name & Login Auto-Cleanup</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes Religion, Mother's Name, PEN & Login Auto-Cleanup</p>
                 </div>
             </div>
             <button 
@@ -161,7 +163,7 @@ NOTIFY pgrst, 'reload schema';
                         Cloud Fix Required
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        To enable <strong>Mother's Name</strong>, <strong>Religion</strong>, and <strong>Login Auto-Deletion</strong>, you must update your Supabase schema using the script below.
+                        To enable <strong>Mother's Name</strong>, <strong>Religion</strong>, <strong>PEN No.</strong> and <strong>Login Auto-Deletion</strong>, you must update your Supabase schema using the script below.
                     </p>
                     <ol className="text-xs text-indigo-100 space-y-2 list-decimal ml-4 font-bold">
                         <li>Click <strong>Copy</strong> on the script.</li>

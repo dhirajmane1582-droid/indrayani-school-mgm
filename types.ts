@@ -24,6 +24,7 @@ export interface Student {
   alternatePhone?: string;
   aadharNo?: string;
   apaarId?: string;
+  penNo?: string;
   caste?: string;
   religion?: string;
   mothersName?: string;
