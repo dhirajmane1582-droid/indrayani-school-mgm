@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { User, Student, Homework, Exam, StudentResult, AttendanceRecord, Announcement, AnnualRecord, Holiday, getSubjectsForClass } from '../types';
-import { BookOpen, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, Download, X, RefreshCw, Loader2, Eye, ChevronDown } from 'lucide-react';
+import { BookOpen, GraduationCap, Bell, UserCheck, CalendarCheck, FileBadge, LogOut, Download, X, RefreshCw, Loader2, Eye, ChevronDown, UserRound, MapPin, Phone, Fingerprint, IdCard, Hash, MapPinned, MoonStar, Users2 } from 'lucide-react';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -150,7 +150,7 @@ const PDF_STYLES_STRETCH_COLOR = `
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
   currentUser, onLogout, students, homework, exams, results, attendance, announcements, annualRecords = [], holidays = [], onRefresh, isSyncing = false
 }) => {
-  const [activeTab, setActiveTab] = useState<'home' | 'homework' | 'exams' | 'results' | 'attendance' | 'notices'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'homework' | 'exams' | 'results' | 'attendance' | 'notices' | 'profile'>('home');
   const [isDownloading, setIsDownloading] = useState(false);
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
 
@@ -450,6 +450,11 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                           <p className={`text-xs font-bold ${hasNewNotices ? 'text-blue-500' : 'text-slate-400'}`}>{hasNewNotices ? 'New updates posted!' : 'School updates'}</p>
                       </div>
                   </button>
+
+                  <button onClick={() => setActiveTab('profile')} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all text-left flex items-start gap-5 group relative">
+                      <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shrink-0"><UserRound size={24}/></div>
+                      <div className="flex-1 pt-0.5"><h3 className="text-lg font-bold text-slate-800 mb-1">Institutional Profile</h3><p className="text-slate-500 font-medium text-xs">Your Personal Records</p></div>
+                  </button>
               </div>
           )}
 
@@ -557,6 +562,110 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               </div>
                           ))}
                           {filteredAttendance.length === 0 && <div className="p-12 text-center text-slate-300 italic text-sm">No valid records logged yet.</div>}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {activeTab === 'profile' && (
+              <div className="space-y-8 animate-in slide-in-from-bottom-4">
+                  <button onClick={() => setActiveTab('home')} className="p-2 -ml-2 text-slate-400 hover:text-slate-900 transition-colors flex items-center gap-2 text-sm font-bold uppercase tracking-widest"><X size={20}/> Close</button>
+                  
+                  <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-xl">
+                      <div className="bg-slate-900 p-8 text-white relative">
+                          <div className="flex items-center gap-6 relative z-10">
+                              <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/20">
+                                  <UserRound size={48} className="text-indigo-400" />
+                              </div>
+                              <div>
+                                  <h2 className="text-3xl font-black uppercase tracking-tight mb-1">{student.name}</h2>
+                                  <p className="text-indigo-400 font-bold uppercase text-xs tracking-widest">{student.className} • ROLL NO: {student.rollNo}</p>
+                              </div>
+                          </div>
+                          <div className="absolute top-0 right-0 p-8 opacity-10">
+                              <GraduationCap size={160} />
+                          </div>
+                      </div>
+
+                      <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                          {/* General Information */}
+                          <section className="space-y-6">
+                              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Academic Information</h3>
+                              <div className="space-y-4">
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Mother's Name</span>
+                                      <span className="text-sm font-black text-slate-800 uppercase">{student.mothersName || '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Medium</span>
+                                      <span className="text-sm font-black text-slate-800 uppercase">{student.medium || 'English'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Date of Birth</span>
+                                      <span className="text-sm font-black text-slate-800 uppercase">{formatResilientDate(student.dob)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Place of Birth</span>
+                                      <span className="text-sm font-black text-slate-800 uppercase">{student.placeOfBirth || '-'}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Religion / Caste</span>
+                                      <div className="flex items-center gap-2">
+                                          <span className="text-sm font-black text-slate-800 uppercase">{student.religion || '-'}</span>
+                                          <span className="text-xs font-medium text-slate-400">/</span>
+                                          <span className="text-sm font-black text-slate-800 uppercase">{student.caste || '-'}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </section>
+
+                          {/* Contact & Address */}
+                          <section className="space-y-6">
+                              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Contact & Address</h3>
+                              <div className="space-y-4">
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Primary Phone</span>
+                                      <span className="text-sm font-black text-slate-800">{student.phone}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase">Alt. Phone</span>
+                                      <span className="text-sm font-black text-slate-800">{student.alternatePhone || '-'}</span>
+                                  </div>
+                                  <div className="py-1">
+                                      <span className="text-xs font-bold text-slate-500 uppercase block mb-2">Residential Address</span>
+                                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                          <p className="text-sm font-medium text-slate-600 leading-relaxed">{student.address || 'Address record unavailable.'}</p>
+                                      </div>
+                                  </div>
+                              </div>
+                          </section>
+
+                          {/* Government Identifiers */}
+                          <section className="md:col-span-2 pt-4">
+                              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Government Identifiers</h3>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                  <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 group hover:border-indigo-200 transition-all">
+                                      <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center text-indigo-500 shadow-sm mb-3 group-hover:scale-110 transition-transform"><Fingerprint size={20}/></div>
+                                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aadhar Card</div>
+                                      <div className="text-base font-black text-slate-800 tracking-tight">{student.aadharNo || 'Not Provided'}</div>
+                                  </div>
+                                  <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 group hover:border-indigo-200 transition-all">
+                                      <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center text-indigo-500 shadow-sm mb-3 group-hover:scale-110 transition-transform"><IdCard size={20}/></div>
+                                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APAAR ID</div>
+                                      <div className="text-base font-black text-slate-800 tracking-tight uppercase">{student.apaarId || 'Not Provided'}</div>
+                                  </div>
+                                  <div className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 group hover:border-indigo-200 transition-all">
+                                      <div className="bg-white w-10 h-10 rounded-xl flex items-center justify-center text-indigo-500 shadow-sm mb-3 group-hover:scale-110 transition-transform"><Hash size={20}/></div>
+                                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PEN No.</div>
+                                      <div className="text-base font-black text-slate-800 tracking-tight uppercase">{student.penNo || 'Not Provided'}</div>
+                                  </div>
+                              </div>
+                          </section>
+                      </div>
+
+                      <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0"><RefreshCw size={14} className="animate-spin-slow" /></div>
+                          <p className="text-xs font-bold text-slate-500 italic">This information is retrieved directly from institutional records. Contact the school office for updates.</p>
                       </div>
                   </div>
               </div>
