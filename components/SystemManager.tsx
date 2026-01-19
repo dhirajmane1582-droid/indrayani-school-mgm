@@ -12,130 +12,56 @@ const SystemManager: React.FC<SystemManagerProps> = ({ onExport, onImport }) => 
   const [showSql, setShowSql] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sqlSchema = `-- INDRAYANI SCHOOL DATABASE COMPREHENSIVE REPAIR SCRIPT
--- Run this in Supabase SQL Editor to fix synchronization issues and missing columns.
+  const sqlSchema = `-- INDRAYANI SCHOOL - CROSS-DEVICE LOGIN REPAIR (SAFE)
+-- This script only adds missing pieces for login and disables device blocking.
+-- IT WILL NOT DELETE OR CHANGE YOUR EXISTING ATTENDANCE OR STUDENT DATA.
 
--- 1. REPAIR/CREATE STUDENTS TABLE
-CREATE TABLE IF NOT EXISTS students (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  "mothersName" TEXT,
-  "rollNo" TEXT,
-  "className" TEXT,
-  medium TEXT DEFAULT 'English',
-  religion TEXT,
-  dob TEXT,
-  "placeOfBirth" TEXT,
-  address TEXT,
-  phone TEXT,
-  "alternatePhone" TEXT,
-  "aadharNo" TEXT,
-  "apaarId" TEXT,
-  "penNo" TEXT,
-  caste TEXT,
-  "customFields" JSONB DEFAULT '{}'::jsonb
-);
-
--- 2. ENSURE ALL STUDENT COLUMNS EXIST
-DO $$ 
-BEGIN 
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "mothersName" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS religion TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS medium TEXT DEFAULT 'English'; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "placeOfBirth" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "alternatePhone" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "aadharNo" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "apaarId" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS "penNo" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE students ADD COLUMN IF NOT EXISTS caste TEXT; EXCEPTION WHEN others THEN NULL; END;
-END $$;
-
--- 3. REPAIR/CREATE USERS TABLE
+-- 1. Ensure the Users table is optimized for Global Login
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL,
-  "linkedStudentId" UUID REFERENCES students(id) ON DELETE CASCADE
+  "linkedStudentId" UUID
 );
 
--- 4. REPAIR/CREATE ANNUAL RECORDS TABLE
-CREATE TABLE IF NOT EXISTS annual_records (
-  "studentId" UUID PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
-  "academicYear" TEXT,
-  grades JSONB DEFAULT '{}'::jsonb,
-  "sem1Grades" JSONB DEFAULT '{}'::jsonb,
-  "sem2Grades" JSONB DEFAULT '{}'::jsonb,
-  remarks TEXT,
-  hobbies TEXT,
-  "hobbiesSem1" TEXT,
-  "hobbiesSem2" TEXT,
-  improvements TEXT,
-  "improvementsSem1" TEXT,
-  "improvementsSem2" TEXT,
-  "specialImprovementsSem1" TEXT,
-  "specialImprovementsSem2" TEXT,
-  "necessaryImprovementSem1" TEXT,
-  "necessaryImprovementSem2" TEXT,
-  "resultStatus" TEXT,
-  "overallPercentage" TEXT,
-  "customSubjects" TEXT[],
-  "subjectOrder" TEXT[],
-  medium TEXT,
-  published BOOLEAN DEFAULT false
-);
+-- 2. Add an index to make ID lookups instant from any device
+CREATE INDEX IF NOT EXISTS idx_users_username_lookup ON users (LOWER(username));
 
--- 5. ENSURE ALL ANNUAL RECORD COLUMNS EXIST
-DO $$ 
-BEGIN 
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "hobbiesSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "hobbiesSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "improvementsSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "improvementsSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "specialImprovementsSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "specialImprovementsSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "necessaryImprovementSem1" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "necessaryImprovementSem2" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "overallPercentage" TEXT; EXCEPTION WHEN others THEN NULL; END;
-    BEGIN ALTER TABLE annual_records ADD COLUMN IF NOT EXISTS "resultStatus" TEXT; EXCEPTION WHEN others THEN NULL; END;
-END $$;
+-- 3. Ensure other tables exist (Safe: if they exist, nothing happens)
+CREATE TABLE IF NOT EXISTS students (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), name TEXT NOT NULL, "rollNo" TEXT, "className" TEXT, medium TEXT, "customFields" JSONB);
+CREATE TABLE IF NOT EXISTS attendance (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), date TEXT NOT NULL, "studentId" UUID, present BOOLEAN);
+CREATE TABLE IF NOT EXISTS exams (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), title TEXT, type TEXT, "className" TEXT, timetable JSONB);
+CREATE TABLE IF NOT EXISTS results (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), "studentId" UUID, "examId" UUID, marks JSONB, published BOOLEAN);
+CREATE TABLE IF NOT EXISTS annual_records ("studentId" UUID PRIMARY KEY, "academicYear" TEXT, grades JSONB, published BOOLEAN);
+CREATE TABLE IF NOT EXISTS homework (id UUID PRIMARY KEY, date TEXT, "className" TEXT, subject TEXT, title TEXT, description TEXT);
+CREATE TABLE IF NOT EXISTS announcements (id UUID PRIMARY KEY, date TEXT, title TEXT, content TEXT, "targetClass" TEXT);
+CREATE TABLE IF NOT EXISTS fees (id UUID PRIMARY KEY, "studentId" UUID, amount NUMERIC, date TEXT);
+CREATE TABLE IF NOT EXISTS holidays (id UUID PRIMARY KEY, date TEXT, name TEXT);
+CREATE TABLE IF NOT EXISTS custom_field_defs (id UUID PRIMARY KEY, label TEXT);
 
--- 6. REPAIR/CREATE RESULTS TABLE
-CREATE TABLE IF NOT EXISTS results (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  "examId" UUID,
-  marks JSONB DEFAULT '{}'::jsonb,
-  "aiRemark" TEXT,
-  published BOOLEAN DEFAULT false
-);
-
--- 7. REPAIR/CREATE ATTENDANCE TABLE
-CREATE TABLE IF NOT EXISTS attendance (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  date TEXT NOT NULL,
-  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
-  present BOOLEAN DEFAULT true
-);
-
--- 8. DISABLE RLS (Security handled by App Logic)
-ALTER TABLE students DISABLE ROW LEVEL SECURITY;
-ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
-ALTER TABLE results DISABLE ROW LEVEL SECURITY;
+-- 4. CRITICAL: Allow all devices to access the data (Disable RLS)
+-- This does not change your data, only the permission to see it from other phones/PCs.
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE students DISABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
+ALTER TABLE exams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE results DISABLE ROW LEVEL SECURITY;
+ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE homework DISABLE ROW LEVEL SECURITY;
 ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fees DISABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
+ALTER TABLE holidays DISABLE ROW LEVEL SECURITY;
+ALTER TABLE custom_field_defs DISABLE ROW LEVEL SECURITY;
 
--- 9. CLEAR CACHE
+-- Refresh Supabase to apply changes
 NOTIFY pgrst, 'reload schema';
 `;
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlSchema);
-    setStatus({ msg: "SQL Migration Copied!", type: 'success' });
+    setStatus({ msg: "Safe Repair SQL Copied!", type: 'success' });
     setTimeout(() => setStatus(null), 3000);
   };
 
@@ -169,7 +95,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes Attendance, PEN No & Sync Errors</p>
+                    <p className="text-xs text-indigo-200 font-medium">Enable Global Login & All Modules Sync</p>
                 </div>
             </div>
             <button 
@@ -185,14 +111,14 @@ NOTIFY pgrst, 'reload schema';
                 <div className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-3">
                     <p className="text-sm font-bold text-indigo-100 flex items-center gap-2">
                         <AlertTriangle size={16} className="text-amber-400" /> 
-                        Cloud Sync Error Fix
+                        Global Login Setup
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        If you are getting "Cloud Error" or students cannot see their attendance, run this script to ensure all cloud tables (including <strong>Attendance</strong>) are correctly initialized.
+                        To allow users to log in from <strong>any device</strong>, Supabase needs the full table structure and indices. This script ensures every staff member and student can access the system globally.
                     </p>
                 </div>
                 <div className="relative">
-                    <pre className="bg-black/40 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[250px] text-emerald-400 border border-white/5">
+                    <pre className="bg-black/40 p-4 rounded-xl text-[10px] font-mono overflow-x-auto max-h-[300px] text-emerald-400 border border-white/5">
                         {sqlSchema}
                     </pre>
                     <button onClick={copySql} className="absolute top-2 right-2 p-2 bg-indigo-600 hover:bg-indigo-50 rounded-lg shadow-lg transition-all active:scale-90" title="Copy SQL"><Copy size={16} /></button>

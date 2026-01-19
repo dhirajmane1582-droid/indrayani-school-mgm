@@ -89,14 +89,18 @@ export const dbService = {
 
   async verifyCloudUser(username: string, pass: string) {
     try {
+      // Use ilike for case-insensitive username comparison
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('username', username)
+        .ilike('username', username.trim())
         .eq('password', pass)
-        .single();
+        .maybeSingle();
       
-      if (error) return null;
+      if (error) {
+          console.error("Cloud Auth Error:", error);
+          return null;
+      }
       return data;
     } catch (e) {
       return null;

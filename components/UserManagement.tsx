@@ -63,13 +63,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername || !newPassword || !newName) return;
+    const cleanUsername = newUsername.trim().toLowerCase();
+    
+    if (!cleanUsername || !newPassword || !newName) return;
     if (newRole === 'student' && !linkedStudentId) {
         alert("Please select a student profile to link.");
         return;
     }
 
-    if (users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
+    if (users.some(u => u.username.toLowerCase() === cleanUsername)) {
       alert('Username already exists');
       return;
     }
@@ -78,7 +80,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
     try {
         const newUser: User = {
           id: crypto.randomUUID(),
-          username: newUsername,
+          username: cleanUsername,
           password: newPassword,
           name: newName,
           role: newRole,
