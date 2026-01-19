@@ -87,6 +87,22 @@ export const dbService = {
     return db.getAll(storeName);
   },
 
+  async verifyCloudUser(username: string, pass: string) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('password', pass)
+        .single();
+      
+      if (error) return null;
+      return data;
+    } catch (e) {
+      return null;
+    }
+  },
+
   async put(storeName: string, item: any) {
     const db = await initDB();
     const tableName = TABLE_MAP[storeName];

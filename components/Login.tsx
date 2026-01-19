@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database, Loader2, Cloud, RefreshCw } from 'lucide-react';
+import { dbService } from '../services/db';
 
 interface LoginProps {
   users: User[];
@@ -16,21 +17,35 @@ const Login: React.FC<LoginProps> = ({ users, onLogin, onRefreshData }) => {
   const [error, setError] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsUpdating(true);
 
-    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
-    
-    if (user) {
-      if (user.role === activeRole) {
-        onLogin(user);
-      } else {
-        const roleNames = { student: 'Student', teacher: 'Teacher', headmaster: 'Headmaster' };
-        setError(`Access Denied: You cannot log in here. Please use the ${roleNames[user.role]} portal.`);
-      }
-    } else {
-      setError('Invalid username or password. If this is a new account, try "Sync Credentials" below.');
+    try {
+        // 1. Check Local Cache First (for speed/offline)
+        let user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
+        
+        // 2. If not found locally, check Cloud directly (Source of Truth)
+        if (!user) {
+            const cloudUser = await dbService.verifyCloudUser(username, password);
+            if (cloudUser) user = cloudUser;
+        }
+
+        if (user) {
+          if (user.role === activeRole) {
+            onLogin(user);
+          } else {
+            const roleNames = { student: 'Student', teacher: 'Teacher', headmaster: 'Headmaster' };
+            setError(`Access Denied: You cannot log in here. Please use the ${roleNames[user.role]} portal.`);
+          }
+        } else {
+          setError('Invalid credentials. If this is a new account, ensure you have an active internet connection.');
+        }
+    } catch (err) {
+        setError('Connection error. Please try again.');
+    } finally {
+        setIsUpdating(false);
     }
   };
 
@@ -144,7 +159,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin, onRefreshData }) => {
                 `}
             >
                 {isUpdating ? <Loader2 size={20} className="animate-spin"/> : <LogIn size={20} />}
-                {isUpdating ? 'Connecting...' : 'Secure Login'}
+                {isUpdating ? 'Verifying...' : 'Secure Login'}
             </button>
             </form>
 
@@ -155,7 +170,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin, onRefreshData }) => {
                   className="w-full flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 font-black text-[10px] uppercase tracking-widest transition-all"
                 >
                     <RefreshCw size={14} className={isUpdating ? 'animate-spin' : ''} />
-                    {isUpdating ? 'Pulling Latest Cloud Data...' : 'Sync New Credentials'}
+                    {isUpdating ? 'Refreshing Data...' : 'Update Device Data'}
                 </button>
             </div>
 
