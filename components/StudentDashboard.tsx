@@ -58,40 +58,26 @@ const PDF_STYLES_STRETCH_COLOR = `
         border: 4px double #000000;
         height: 100%;
         width: 100%;
-        padding: 6mm;
+        padding: 5mm;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         background: #ffffff !important;
     }
-    .header { text-align: center; position: relative; margin-bottom: 8px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff !important; }
-    .logo-container { 
-        position: absolute; 
-        top: 0; 
-        left: 0; 
-        width: 85px; 
-        height: 85px; 
-        padding: 5px; 
-        background: #ffffff !important; 
-        border-radius: 12px; 
-        border: 1.5px solid #e2e8f0; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        z-index: 10;
-    }
-    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
-    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000000; }
-    .school-name { font-size: 26px; font-weight: 900; text-transform: uppercase; color: #c2410c; margin: 0; line-height: 1; }
-    .school-details { font-size: 10px; margin-top: 5px; font-weight: 800; color: #374151; }
+    .header { text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+    .logo-container { width: 85px; margin: 0 auto 5px; }
+    .logo-img { width: 100%; height: auto; display: block; }
+    .school-group { font-size: 11px; font-weight: bold; margin-bottom: 1px; text-transform: uppercase; color: #000000; }
+    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; color: #c2410c; margin: 0; line-height: 1; }
+    .school-details { font-size: 9px; margin-top: 3px; font-weight: 800; color: #374151; }
     .report-badge { 
-        margin-top: 10px; 
-        font-size: 16px; 
+        margin-top: 5px; 
+        font-size: 13px; 
         font-weight: 900; 
         text-transform: uppercase; 
         border: 2px solid #000000; 
         display: inline-block; 
-        padding: 5px 45px;
+        padding: 3px 45px;
         background: #f8fafc;
         color: #000000;
         border-radius: 6px;
@@ -99,52 +85,68 @@ const PDF_STYLES_STRETCH_COLOR = `
 
     .student-info-box { 
         border: 2px solid #000000; 
-        margin-top: 15px; 
-        padding: 15px; 
+        margin-top: 5px; 
+        padding: 10px 15px; 
         display: grid; 
         grid-template-columns: 1.2fr 0.8fr; 
-        gap: 10px 35px; 
-        font-size: 14px;
+        gap: 4px 35px; 
+        font-size: 13px;
         background: #ffffff;
         border-radius: 12px;
+        flex-shrink: 0;
     }
     .field-row { display: flex; align-items: baseline; }
-    .field-label { font-weight: 900; min-width: 120px; text-transform: uppercase; font-size: 11px; color: #475569; }
+    .field-label { font-weight: 900; min-width: 100px; text-transform: uppercase; font-size: 10px; color: #475569; }
     .field-value { border-bottom: 2px solid #000000; flex: 1; font-weight: bold; color: #000000; padding-left: 5px; }
 
-    .main-grades-section { flex-grow: 4; display: flex; flex-direction: column; margin: 20px 0; min-height: 0; background: #ffffff !important; }
+    .main-grades-section { 
+        flex: 1 1 auto; 
+        display: flex; 
+        flex-direction: column; 
+        margin: 10px 0; 
+        min-height: 0; 
+        background: #ffffff !important; 
+    }
     .grades-table { width: 100%; border-collapse: collapse; height: 100%; }
-    .grades-table th { background: #1e293b; color: #ffffff !important; font-size: 12px; font-weight: bold; text-transform: uppercase; border: 2px solid #000000; padding: 12px 5px; }
-    .grades-table td { border: 2px solid #000000; padding: 8px 5px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
-    .sub-name { text-align: left; padding-left: 20px; font-size: 13px; color: #000000; }
+    .grades-table th { background: #1e293b; color: #ffffff !important; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 2px solid #000000; padding: 6px 5px; }
+    .grades-table td { border: 2px solid #000000; padding: 4px 5px; text-align: center; font-size: 12px; font-weight: bold; color: #000; }
+    .sub-name { text-align: left; padding-left: 15px; font-size: 12px; color: #000000; }
     .grade-val { color: #000000; font-weight: 900; }
-    .perc-row { background: #f8fafc !important; }
-    .perc-row td { font-size: 14px; font-weight: 900; padding: 12px; border-top: 3px solid #000; }
+    .perc-row { background: #f8fafc !important; height: 35px; }
+    .perc-row td { font-size: 13px; font-weight: 900; padding: 10px; border-top: 3px solid #000; }
 
-    .remarks-section { flex-grow: 2.5; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff !important; }
+    .remarks-section { 
+        flex: 0.6 0 auto; 
+        margin-bottom: 10px; 
+        display: flex; 
+        flex-direction: column; 
+        min-height: 0; 
+        background: #ffffff !important; 
+    }
     .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 2.5px solid #000000; border-radius: 10px; overflow: hidden; height: 100%; }
-    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000000; padding: 10px; font-size: 13px; vertical-align: top; color: #000; }
-    .remarks-grid-table th { background: #1e293b; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 11px; }
-    .criteria-label { font-weight: 900; background: #f8fafc !important; width: 170px; text-transform: uppercase; font-size: 10px; color: #475569; vertical-align: middle; }
-    .remarks-text-cell { line-height: 1.4; color: #000000; font-style: italic; font-weight: 600; }
+    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000000; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
+    .remarks-grid-table th { background: #1e293b; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 10px; }
+    .criteria-label { font-weight: 900; background: #f8fafc !important; width: 150px; text-transform: uppercase; font-size: 9px; color: #475569; vertical-align: middle; }
+    .remarks-text-cell { line-height: 1.3; color: #000000; font-style: italic; font-weight: 600; }
 
-    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .grade-key-row td { border: 1.5px solid #000000; font-size: 10px; padding: 6px; text-align: center; font-weight: bold; color: #000000; background: #ffffff !important; }
+    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 10px; flex-shrink: 0; }
+    .grade-key-row td { border: 1.5px solid #000000; font-size: 9px; padding: 4px; text-align: center; font-weight: bold; color: #000000; background: #ffffff !important; }
 
     .result-ribbon { 
         border: 3px solid #000000; 
-        padding: 15px; 
+        padding: 10px; 
         text-align: center; 
         background: #f8fafc !important;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         border-radius: 15px;
+        flex-shrink: 0;
     }
-    .result-main { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; color: #000000; }
+    .result-main { font-size: 15px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; color: #000000; }
     .result-main span { color: #c2410c; }
-    .reopening { font-size: 11px; font-weight: bold; color: #374151; margin-top: 5px; }
+    .reopening { font-size: 10px; font-weight: bold; color: #374151; margin-top: 3px; }
 
-    .signatures-row { display: flex; justify-content: space-between; padding: 0 20px; margin-top: 15px; }
-    .sig-block { width: 220px; border-top: 3px solid #000000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000000; }
+    .signatures-row { display: flex; justify-content: space-between; padding: 0 20px; margin-top: 10px; flex-shrink: 0; }
+    .sig-block { width: 180px; border-top: 3px solid #000000; text-align: center; padding-top: 5px; font-weight: 900; font-size: 12px; text-transform: uppercase; color: #000000; }
 `;
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -156,7 +158,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   const student = useMemo(() => students.find(s => s.id === currentUser.linkedStudentId), [students, currentUser]);
   
-  // Robust check for published status to handle varying DB boolean representations
   const studentAnnualRecord = useMemo(() => {
     if (!student) return null;
     return annualRecords.find(r => 
@@ -173,7 +174,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
     }
   }, [activeTab]);
 
-  // Seen state tracking
   const [seenHomeworkIds, setSeenHomeworkIds] = useState<Set<string>>(() => {
     const saved = localStorage.getItem(`seen_hw_${currentUser.id}`);
     return saved ? new Set(JSON.parse(saved)) : new Set();
@@ -263,7 +263,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
     const rows = subjects.map((sub, i) => `
         <tr>
-            <td style="width:45px;">${i+1}</td>
+            <td style="width:40px;">${i+1}</td>
             <td class="sub-name">${sub}</td>
             <td class="grade-val">${record.sem1Grades?.[sub] || '-'}</td>
             <td class="grade-val">${record.sem2Grades?.[sub] || '-'}</td>
@@ -294,7 +294,7 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                   <table class="grades-table">
                       <thead>
                           <tr>
-                              <th style="width:45px;">SR.</th>
+                              <th style="width:40px;">SR.</th>
                               <th class="sub-name">SUBJECTS</th>
                               <th>SEM 1 GRADE</th>
                               <th>SEM 2 GRADE</th>
@@ -465,7 +465,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       {studentAnnualRecord && (<button onClick={downloadPDF} disabled={isDownloading} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all">{isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16}/>} Download PDF</button>)}
                   </div>
 
-                  {/* ANNUAL REPORT CARD SECTION */}
                   <div className="space-y-4">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Annual Progress Card</h3>
                       {studentAnnualRecord ? (
@@ -477,7 +476,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       )}
                   </div>
 
-                  {/* EXAM MARKSHEETS SECTION */}
                   <div className="space-y-4">
                       <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Individual Exam Results</h3>
                       {resultsForStudent.length === 0 ? (
@@ -588,7 +586,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                       </div>
 
                       <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                          {/* General Information */}
                           <section className="space-y-6">
                               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Academic Information</h3>
                               <div className="space-y-4">
@@ -619,7 +616,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               </div>
                           </section>
 
-                          {/* Contact & Address */}
                           <section className="space-y-6">
                               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Contact & Address</h3>
                               <div className="space-y-4">
@@ -640,7 +636,6 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({
                               </div>
                           </section>
 
-                          {/* Government Identifiers */}
                           <section className="md:col-span-2 pt-4">
                               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2 mb-6">Government Identifiers</h3>
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

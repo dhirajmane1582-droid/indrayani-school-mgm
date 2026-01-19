@@ -34,86 +34,91 @@ const PDF_STYLES_STRETCH = `
         border: 2.5px solid #000000;
         height: 100%;
         width: 100%;
-        padding: 6mm;
+        padding: 5mm;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         background: #ffffff !important;
     }
-    .header { text-align: center; position: relative; margin-bottom: 5px; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #ffffff !important; }
-    .logo-container { 
-        position: absolute; 
-        top: 0; 
-        left: 0; 
-        width: 85px; 
-        height: 85px; 
-        background: #ffffff !important; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center;
-        z-index: 10;
-    }
-    .logo-img { width: 100%; height: 100%; object-fit: contain; background: #ffffff !important; display: block; }
-    .school-group { font-size: 13px; font-weight: bold; margin-bottom: 2px; text-transform: uppercase; color: #000000; }
-    .school-name { font-size: 24px; font-weight: 900; text-transform: uppercase; color: #f97316; margin: 0; line-height: 1.1; }
-    .school-details { font-size: 10px; margin-top: 4px; font-weight: bold; color: #000; }
+    .header { text-align: center; margin-bottom: 8px; flex-shrink: 0; }
+    .logo-container { width: 85px; margin: 0 auto 5px; }
+    .logo-img { width: 100%; height: auto; display: block; }
+    .school-group { font-size: 11px; font-weight: bold; margin-bottom: 1px; text-transform: uppercase; color: #000000; }
+    .school-name { font-size: 22px; font-weight: 900; text-transform: uppercase; color: #f97316; margin: 0; line-height: 1; }
+    .school-details { font-size: 9px; margin-top: 3px; font-weight: bold; color: #000; }
     .report-badge { 
-        margin-top: 8px; 
-        font-size: 14px; 
+        margin-top: 5px; 
+        font-size: 13px; 
         font-weight: bold; 
         text-transform: uppercase; 
         border: 2px solid #000000; 
         display: inline-block; 
-        padding: 4px 40px;
+        padding: 3px 40px;
         background: #f8fafc;
         color: #000000;
     }
 
     .student-info-box { 
         border: 1.5px solid #000000; 
-        margin-top: 10px; 
-        padding: 12px; 
+        margin-top: 5px; 
+        padding: 8px 12px; 
         display: grid; 
         grid-template-columns: 1.2fr 0.8fr; 
-        gap: 8px 25px; 
-        font-size: 13px;
+        gap: 4px 25px; 
+        font-size: 12px;
         background: #ffffff !important;
+        flex-shrink: 0;
     }
     .field-row { display: flex; align-items: baseline; }
-    .field-label { font-weight: bold; min-width: 100px; text-transform: uppercase; font-size: 11px; color: #475569; }
+    .field-label { font-weight: bold; min-width: 90px; text-transform: uppercase; font-size: 10px; color: #475569; }
     .field-value { border-bottom: 1.5px dotted #000000; flex: 1; font-weight: bold; padding-left: 5px; color: #000; }
 
-    .main-grades-section { flex-grow: 4; display: flex; flex-direction: column; margin: 15px 0; min-height: 0; background: #ffffff !important; }
-    .grades-table { width: 100%; border-collapse: collapse; }
-    .grades-table th { background: #1e293b !important; font-size: 11px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000000; padding: 10px 4px; color: #ffffff; }
-    .grades-table td { border: 1.5px solid #000000; padding: 6px 4px; text-align: center; font-size: 13px; font-weight: bold; color: #000; }
-    .sub-name { text-align: left; padding-left: 15px; font-size: 12px; }
-    .perc-row { background: #f8fafc !important; }
-    .perc-row td { font-size: 14px; font-weight: 900; padding: 10px; border-top: 2px solid #000; }
+    .main-grades-section { 
+        flex: 1 1 auto; 
+        display: flex; 
+        flex-direction: column; 
+        margin: 10px 0; 
+        min-height: 0; 
+        background: #ffffff !important; 
+    }
+    .grades-table { width: 100%; border-collapse: collapse; height: 100%; }
+    .grades-table th { background: #1e293b !important; font-size: 10px; font-weight: bold; text-transform: uppercase; border: 1.5px solid #000000; padding: 6px 4px; color: #ffffff; }
+    .grades-table td { border: 1.5px solid #000000; padding: 4px 4px; text-align: center; font-size: 12px; font-weight: bold; color: #000; }
+    .sub-name { text-align: left; padding-left: 10px; font-size: 11px; }
+    .perc-row { background: #f8fafc !important; height: 35px; }
+    .perc-row td { font-size: 13px; font-weight: 900; padding: 8px; border-top: 2px solid #000; }
 
-    .remarks-section { flex-grow: 2.5; margin-bottom: 15px; display: flex; flex-direction: column; min-height: 0; background: #ffffff !important; }
+    .remarks-section { 
+        flex: 0.6 0 auto; 
+        margin-bottom: 10px; 
+        display: flex; 
+        flex-direction: column; 
+        min-height: 0; 
+        background: #ffffff !important; 
+    }
     .remarks-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; height: 100%; border: 1.5px solid #000000; }
-    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000000; padding: 8px; font-size: 12px; vertical-align: top; color: #000; }
-    .remarks-grid-table th { background: #1e293b !important; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 10px; }
-    .criteria-label { font-weight: bold; background: #f8fafc !important; width: 170px; text-transform: uppercase; font-size: 10px; vertical-align: middle; color: #475569; }
-    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.4; color: #000000; }
+    .remarks-grid-table th, .remarks-grid-table td { border: 1.5px solid #000000; padding: 6px; font-size: 11px; vertical-align: top; color: #000; }
+    .remarks-grid-table th { background: #1e293b !important; color: #ffffff !important; text-transform: uppercase; font-weight: 900; font-size: 9px; }
+    .criteria-label { font-weight: bold; background: #f8fafc !important; width: 150px; text-transform: uppercase; font-size: 9px; vertical-align: middle; color: #475569; }
+    .remarks-val { font-style: italic; font-weight: bold; line-height: 1.3; color: #000000; }
 
-    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-    .grade-key-row td { border: 1px solid #000000; font-size: 10px; padding: 5px; text-align: center; font-weight: bold; background: #ffffff !important; color: #000; }
+    .grade-key-row { width: 100%; border-collapse: collapse; margin-bottom: 8px; flex-shrink: 0; }
+    .grade-key-row td { border: 1px solid #000000; font-size: 9px; padding: 4px; text-align: center; font-weight: bold; background: #ffffff !important; color: #000; }
 
     .result-ribbon { 
-        border: 2.5px solid #000000; 
-        padding: 12px; 
+        border: 2px solid #000000; 
+        padding: 8px; 
         text-align: center; 
         background: #f8fafc !important;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
+        flex-shrink: 0;
     }
-    .result-main { font-size: 16px; font-weight: 900; text-transform: uppercase; margin-bottom: 2px; color: #000; }
+    .result-main { font-size: 14px; font-weight: 900; text-transform: uppercase; margin-bottom: 1px; color: #000; }
     .result-main span { color: #f97316; }
-    .reopening { font-size: 11px; font-weight: bold; margin-top: 4px; color: #000; }
+    .reopening { font-size: 10px; font-weight: bold; margin-top: 2px; color: #000; }
 
-    .signatures-row { display: flex; justify-content: space-between; padding: 0 40px; margin-top: 10px; }
-    .sig-block { width: 220px; border-top: 2px solid #000000; text-align: center; padding-top: 8px; font-weight: 900; font-size: 13px; text-transform: uppercase; color: #000000; }
+    .signatures-row { display: flex; justify-content: space-between; padding: 0 40px; margin-top: 5px; flex-shrink: 0; }
+    .sig-block { width: 180px; border-top: 1.5px solid #000000; text-align: center; padding-top: 5px; font-weight: 900; font-size: 12px; text-transform: uppercase; color: #000000; }
 `;
 
 const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
@@ -179,7 +184,6 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       setIsSyncing(true);
       try {
           const record = getRecord(studentId);
-          // FORCE CLOUD SYNC: Ensure the record is sent to Supabase immediately
           await dbService.put('annualRecords', record);
           setEditingStudentId(null);
       } catch (err) {
@@ -194,13 +198,11 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       setIsSyncing(true);
       try {
           const record = { ...getRecord(studentId), published: !currentStatus };
-          // Update local state first for UX, ensuring we add if it's new
           setAnnualRecords(prev => {
               const exists = prev.some(r => r.studentId === studentId);
               if (exists) return prev.map(r => r.studentId === studentId ? record : r);
               return [...prev, record];
           });
-          // Update cloud for visibility
           await dbService.put('annualRecords', record);
       } finally {
           setIsSyncing(false);
@@ -223,7 +225,6 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
           });
           
           setAnnualRecords(updatedRecords);
-          // CRITICAL: Ensure batch update hits cloud immediately
           await dbService.putAll('annualRecords', toSync);
           setSelectedStudentIds(new Set()); 
       } finally { 
@@ -256,7 +257,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
       const schoolName = medium === 'English' ? 'INDRAYANI ENGLISH MEDIUM SCHOOL' : 'INDRAYANI INTERNATIONAL SCHOOL';
       const address = "SECTOR 18, KOPARKHAIRANE, NAVI MUMBAI | UDISE: 27211003415";
       const nextClass = className.startsWith('Class ') ? `Class ${parseInt(className.replace('Class ', '')) + 1}` : className === 'Sr. KG' ? 'Class 1' : 'Next Grade';
-      const rows = subjects.map((sub, i) => `<tr><td style="width:45px;">${i+1}</td><td class="sub-name">${sub}</td><td>${record.sem1Grades?.[sub] || '-'}</td><td>${record.sem2Grades?.[sub] || '-'}</td></tr>`).join('');
+      const rows = subjects.map((sub, i) => `<tr><td style="width:40px;">${i+1}</td><td class="sub-name">${sub}</td><td>${record.sem1Grades?.[sub] || '-'}</td><td>${record.sem2Grades?.[sub] || '-'}</td></tr>`).join('');
       return `
         <div class="pdf-container">
             <div class="page-border">
@@ -275,7 +276,7 @@ const AnnualResultsManager: React.FC<AnnualResultsManagerProps> = ({
                 </div>
                 <div class="main-grades-section">
                     <table class="grades-table">
-                        <thead><tr><th style="width:45px;">SR.</th><th class="sub-name">SUBJECTS</th><th>FIRST SEMESTER</th><th>SECOND SEMESTER</th></tr></thead>
+                        <thead><tr><th style="width:40px;">SR.</th><th class="sub-name">SUBJECTS</th><th>FIRST SEMESTER</th><th>SECOND SEMESTER</th></tr></thead>
                         <tbody>${rows}<tr class="perc-row"><td colspan="2" style="text-align: right; padding-right: 20px;">OVERALL PERCENTAGE (%)</td><td colspan="2">${record.overallPercentage || '-'} %</td></tr></tbody>
                     </table>
                 </div>
