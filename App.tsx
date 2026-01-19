@@ -138,7 +138,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser) return <Login users={users} onLogin={setCurrentUser} />;
+  if (!currentUser) return <Login users={users} onLogin={setCurrentUser} onRefreshData={() => handleSync(true)} />;
 
   const theme = {
     headmaster: { text: 'text-rose-700', bg: 'bg-rose-600', lightBg: 'bg-rose-50 border-rose-200', gradient: 'from-rose-50 to-white', shadow: 'shadow-rose-100', icon: Shield },

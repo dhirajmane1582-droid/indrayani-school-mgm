@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { User, UserRole, Student } from '../types';
-// Add BookOpen to the import list to fix "Cannot find name 'BookOpen'" error.
 import { Trash2, UserPlus, Shield, GraduationCap, X, Check, User as UserIcon, Search, Plus, Filter, Key, RefreshCw, Copy, CheckCircle2, BookOpen } from 'lucide-react';
 import { dbService } from '../services/db';
 
@@ -62,7 +61,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
     ).slice(0, 10);
   }, [students, studentSearch]);
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPassword || !newName) return;
     if (newRole === 'student' && !linkedStudentId) {
@@ -70,25 +69,35 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
         return;
     }
 
-    if (users.some(u => u.username === newUsername)) {
+    if (users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
       alert('Username already exists');
       return;
     }
 
-    const newUser: User = {
-      id: crypto.randomUUID(),
-      username: newUsername,
-      password: newPassword,
-      name: newName,
-      role: newRole,
-      linkedStudentId: newRole === 'student' ? linkedStudentId : undefined
-    };
+    setIsSyncing(true);
+    try {
+        const newUser: User = {
+          id: crypto.randomUUID(),
+          username: newUsername,
+          password: newPassword,
+          name: newName,
+          role: newRole,
+          linkedStudentId: newRole === 'student' ? linkedStudentId : undefined
+        };
 
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    setIsModalOpen(false);
-    resetForm();
-    handleManualSync(); // Sync automatically after adding
+        // Persist to local and cloud immediately
+        await dbService.put('users', newUser);
+        
+        setUsers(prev => [...prev, newUser]);
+        setIsModalOpen(false);
+        resetForm();
+        showToast("User Created & Synced Across Devices");
+    } catch (err) {
+        console.error("User Creation Error:", err);
+        alert("Account created locally but cloud sync failed. Ensure your internet is stable.");
+    } finally {
+        setIsSyncing(false);
+    }
   };
 
   const resetForm = () => {
@@ -233,7 +242,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
                       )}
                       {user.role === 'teacher' && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700 uppercase border border-indigo-200">
-                          {/* Use BookOpen for teacher role consistency */}
                           <BookOpen size={12} /> Teacher
                           </span>
                       )}
@@ -334,7 +342,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
                 <div className="grid grid-cols-3 gap-2">
                   <label className={`cursor-pointer border rounded-2xl p-3 flex flex-col items-center gap-1 transition-all ${newRole === 'teacher' ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}>
                     <input type="radio" name="role" checked={newRole === 'teacher'} onChange={() => setNewRole('teacher')} className="hidden" />
-                    {/* Use BookOpen for teacher role consistency */}
                     <BookOpen size={18} />
                     <span className="font-black text-[9px] uppercase tracking-tighter">Teacher</span>
                   </label>
@@ -391,9 +398,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, setUsers, curren
               <div className="pt-4 flex flex-col gap-3">
                 <button
                   type="submit"
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2"
+                  disabled={isSyncing}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                  Confirm & Provision Account
+                  {isSyncing ? <RefreshCw size={18} className="animate-spin"/> : null}
+                  {isSyncing ? 'Synchronizing Cloud...' : 'Confirm & Provision Account'}
                 </button>
                 <button
                   type="button"

@@ -1,25 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database, Loader2, Cloud } from 'lucide-react';
+import { Lock, User as UserIcon, LogIn, GraduationCap, BookOpen, Shield, Info, Database, Loader2, Cloud, RefreshCw } from 'lucide-react';
 
 interface LoginProps {
   users: User[];
   onLogin: (user: User) => void;
+  onRefreshData?: () => Promise<void>;
 }
 
-const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
+const Login: React.FC<LoginProps> = ({ users, onLogin, onRefreshData }) => {
   const [activeRole, setActiveRole] = useState<UserRole>('student');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isUpdating, setIsUpdating] = useState(true);
-
-  // Show the loader for a brief moment to signify cloud check
-  useEffect(() => {
-      const timer = setTimeout(() => setIsUpdating(false), 800);
-      return () => clearTimeout(timer);
-  }, []);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +30,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
         setError(`Access Denied: You cannot log in here. Please use the ${roleNames[user.role]} portal.`);
       }
     } else {
-      setError('Invalid username or password');
+      setError('Invalid username or password. If this is a new account, try "Sync Credentials" below.');
     }
   };
 
@@ -44,6 +39,17 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
       setError('');
       setUsername('');
       setPassword('');
+  };
+
+  const handleManualRefresh = async () => {
+    if (!onRefreshData) return;
+    setIsUpdating(true);
+    try {
+        await onRefreshData();
+        setError('');
+    } finally {
+        setIsUpdating(false);
+    }
   };
 
   return (
@@ -88,11 +94,6 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
                     {activeRole === 'teacher' && 'Staff Login'}
                     {activeRole === 'headmaster' && 'Headmaster Login'}
                 </p>
-                {isUpdating && (
-                    <div className="flex items-center gap-1 text-[10px] text-indigo-500 font-bold animate-pulse">
-                        <Cloud size={12}/> Updating...
-                    </div>
-                )}
             </div>
             </div>
 
@@ -146,6 +147,17 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
                 {isUpdating ? 'Connecting...' : 'Secure Login'}
             </button>
             </form>
+
+            <div className="mt-6 pt-6 border-t border-slate-100">
+                <button 
+                  onClick={handleManualRefresh}
+                  disabled={isUpdating}
+                  className="w-full flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 font-black text-[10px] uppercase tracking-widest transition-all"
+                >
+                    <RefreshCw size={14} className={isUpdating ? 'animate-spin' : ''} />
+                    {isUpdating ? 'Pulling Latest Cloud Data...' : 'Sync New Credentials'}
+                </button>
+            </div>
 
             <div className="mt-8 text-center text-[10px] text-slate-300 font-black tracking-widest uppercase">
             © 2025 Indrayani School • Private System
