@@ -1,9 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { Student, AttendanceRecord, CLASSES, Holiday, User } from '../types';
-// Fixed: Added AlertTriangle to the lucide-react import list.
 import { Calendar, Check, X, BarChart3, CalendarOff, ChevronLeft, ChevronRight, Plus, Trash2, Search, Info, AlertCircle, AlertTriangle, CalendarRange, Users, UserCheck, UserMinus, User as UserIcon, RefreshCw, Eraser, Settings } from 'lucide-react';
-import { dbService } from '../services/db';
+import { dbService, generateUUID } from '../services/db';
 
 interface AttendanceTrackerProps {
   students: Student[];
@@ -44,6 +43,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   const [deleteYear, setDeleteYear] = useState(String(new Date().getFullYear()));
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<AttendanceFilter>('all');
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [newHolidayName, setNewHolidayName] = useState('');
   const [newHolidayDate, setNewHolidayDate] = useState(today);
@@ -59,7 +59,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
   }, [students, selectedClass]);
 
   const getStatus = (studentId: string) => {
-    // If it's a holiday, attendance is automatically cancelled/null
     if (checkHoliday(selectedDate)) return undefined;
     const record = attendance.find(r => r.studentId === studentId && r.date === selectedDate);
     return record?.present;
@@ -70,7 +69,6 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     let present = 0;
     let absent = 0;
     
-    // Stats calculation ignores records on holidays automatically
     if (!checkHoliday(selectedDate) && !isSunday) {
       classStudents.forEach(s => {
         const status = getStatus(s.id);
@@ -95,61 +93,89 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     return list.sort((a,b) => (parseInt(a.rollNo)||0) - (parseInt(b.rollNo)||0));
   }, [classStudents, attendance, selectedDate, searchQuery, statusFilter, holidays]);
 
-  const toggleAttendance = (studentId: string, present: boolean) => {
+  const toggleAttendance = async (studentId: string, present: boolean) => {
       if (currentDayHoliday || isSunday || selectedDate > today) return;
+      setIsSyncing(true);
+
+      const existingRecord = attendance.find(r => r.studentId === studentId && r.date === selectedDate);
+      const newRecord: AttendanceRecord = { 
+          id: existingRecord?.id || generateUUID(), 
+          studentId, 
+          date: selectedDate, 
+          present 
+      };
+
+      // 1. Update State Optimistically
       setAttendance(prev => {
           const clean = prev.filter(r => !(r.studentId === studentId && r.date === selectedDate));
-          return [...clean, { id: crypto.randomUUID(), studentId, date: selectedDate, present }];
+          return [...clean, newRecord];
       });
+
+      // 2. Persist to DB (Local & Cloud)
+      try {
+          await dbService.put('attendance', newRecord);
+      } catch (err) {
+          console.error("Cloud Sync Error:", err);
+      } finally {
+          setIsSyncing(false);
+      }
   };
 
-  const markAll = (present: boolean) => {
+  const markAll = async (present: boolean) => {
     if (currentDayHoliday || isSunday || !selectedClass || selectedDate > today) return;
-    const newRecords = classStudents.map(student => ({
-        id: crypto.randomUUID(),
-        date: selectedDate,
-        studentId: student.id,
-        present
-    }));
+    setIsSyncing(true);
+
+    const newRecords: AttendanceRecord[] = classStudents.map(student => {
+        const existing = attendance.find(r => r.studentId === student.id && r.date === selectedDate);
+        return {
+            id: existing?.id || generateUUID(),
+            date: selectedDate,
+            studentId: student.id,
+            present
+        };
+    });
+
     setAttendance(prev => {
       const otherRecords = prev.filter(r => r.date !== selectedDate || !classStudents.find(s => s.id === r.studentId));
       return [...otherRecords, ...newRecords];
     });
+
+    try {
+        await dbService.putAll('attendance', newRecords);
+    } catch (err) {
+        console.error("Bulk sync error:", err);
+    } finally {
+        setIsSyncing(false);
+    }
   };
 
   const handleDeleteMonth = async () => {
     if (!selectedClass) return;
-    const count = attendance.filter(r => {
+    const recordsToDelete = attendance.filter(r => {
         const d = new Date(r.date);
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const y = String(d.getFullYear());
         return m === deleteMonth && y === deleteYear && classStudents.some(s => s.id === r.studentId);
-    }).length;
+    });
 
-    if (count === 0) { alert("No attendance records found for this period."); return; }
+    if (recordsToDelete.length === 0) { alert("No attendance records found for this period."); return; }
     
-    if (window.confirm(`Are you sure you want to delete ALL attendance records (${count}) for ${selectedClass} in ${deleteMonth}/${deleteYear}? This cannot be undone.`)) {
-        const recordsToDelete = attendance.filter(r => {
-            const d = new Date(r.date);
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const y = String(d.getFullYear());
-            return m === deleteMonth && y === deleteYear && classStudents.some(s => s.id === r.studentId);
-        });
-
-        for (const rec of recordsToDelete) {
-            await dbService.delete('attendance', rec.id);
+    if (window.confirm(`Are you sure you want to delete ALL attendance records (${recordsToDelete.length}) for ${selectedClass} in ${deleteMonth}/${deleteYear}? This cannot be undone.`)) {
+        setIsSyncing(true);
+        try {
+            for (const rec of recordsToDelete) {
+                await dbService.delete('attendance', rec.id);
+            }
+            setAttendance(prev => prev.filter(r => {
+                const d = new Date(r.date);
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const y = String(d.getFullYear());
+                return !(m === deleteMonth && y === deleteYear && classStudents.some(s => s.id === r.studentId));
+            }));
+            setIsDeleteModalOpen(false);
+        } finally {
+            setIsSyncing(false);
         }
-
-        setAttendance(prev => prev.filter(r => {
-            const d = new Date(r.date);
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const y = String(d.getFullYear());
-            const isTarget = m === deleteMonth && y === deleteYear && classStudents.some(s => s.id === r.studentId);
-            return !isTarget;
-        }));
-
-        setIsDeleteModalOpen(false);
-        alert("Attendance wiped successfully.");
     }
   };
 
@@ -157,12 +183,13 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
     e.preventDefault();
     if (!newHolidayName.trim()) return;
     const newH: Holiday = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         date: newHolidayDate,
         endDate: isRange ? newHolidayEndDate : undefined,
         name: newHolidayName.trim()
     };
     setHolidays(prev => [...prev, newH].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+    dbService.put('holidays', newH);
     setNewHolidayName('');
     setIsRange(false);
   };
@@ -172,9 +199,17 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
       <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-slate-200">
         <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-slate-800">Class Attendance</h2>
-                    <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-black tracking-widest">{new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                <div className="flex items-center gap-3">
+                    <div>
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-800">Class Attendance</h2>
+                        <p className="text-[10px] sm:text-xs text-slate-500 uppercase font-black tracking-widest">{new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                    {isSyncing && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100 animate-pulse">
+                            <RefreshCw size={12} className="animate-spin" />
+                            <span className="text-[9px] font-black uppercase">Syncing...</span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex gap-2">
                     {selectedClass && (
@@ -226,8 +261,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
           <div className={`space-y-4 transition-opacity duration-300 ${(currentDayHoliday || isSunday) ? 'opacity-60 pointer-events-none grayscale' : 'opacity-100'}`}>
               <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <button onClick={() => markAll(true)} disabled={!!currentDayHoliday || isSunday || selectedDate > today} className="flex-1 sm:px-6 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg disabled:bg-slate-200 transition-all active:scale-95">Mark All Present</button>
-                    <button onClick={() => markAll(false)} disabled={!!currentDayHoliday || isSunday || selectedDate > today} className="flex-1 sm:px-6 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg disabled:bg-slate-200 transition-all active:scale-95">Mark All Absent</button>
+                    <button onClick={() => markAll(true)} disabled={!!currentDayHoliday || isSunday || selectedDate > today || isSyncing} className="flex-1 sm:px-6 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg disabled:bg-slate-200 transition-all active:scale-95">Mark All Present</button>
+                    <button onClick={() => markAll(false)} disabled={!!currentDayHoliday || isSunday || selectedDate > today || isSyncing} className="flex-1 sm:px-6 py-3 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg disabled:bg-slate-200 transition-all active:scale-95">Mark All Absent</button>
                 </div>
                 <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-full sm:w-auto">
                     <button onClick={() => setStatusFilter('all')} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${statusFilter === 'all' ? 'bg-white text-indigo-700 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}><Users size={14}/><span>All</span><span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${statusFilter === 'all' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>{stats.total}</span></button>
@@ -254,8 +289,8 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                                       <div className="flex-1 overflow-hidden"><div className="font-bold text-slate-800 text-sm truncate uppercase">{student.name}</div><div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Roll No: {student.rollNo}</div></div>
                                   </div>
                                   <div className="grid grid-cols-2 gap-3">
-                                      <button onClick={() => toggleAttendance(student.id, true)} className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === true ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 border border-slate-100'}`}><Check size={20}/><span className="text-[9px] font-black uppercase tracking-tighter">Present</span></button>
-                                      <button onClick={() => toggleAttendance(student.id, false)} className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === false ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 border border-slate-100'}`}><X size={20}/><span className="text-[9px] font-black uppercase tracking-tighter">Absent</span></button>
+                                      <button disabled={isSyncing} onClick={() => toggleAttendance(student.id, true)} className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === true ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-emerald-50 border border-slate-100'}`}><Check size={20}/><span className="text-[9px] font-black uppercase tracking-tighter">Present</span></button>
+                                      <button disabled={isSyncing} onClick={() => toggleAttendance(student.id, false)} className={`py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${status === false ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-rose-50 border border-slate-100'}`}><X size={20}/><span className="text-[9px] font-black uppercase tracking-tighter">Absent</span></button>
                                   </div>
                               </div>
                           );
@@ -302,7 +337,7 @@ const AttendanceTracker: React.FC<AttendanceTrackerProps> = ({
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3.5 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600">Cancel</button>
-                        <button onClick={handleDeleteMonth} className="flex-2 px-8 py-3.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-100 hover:bg-rose-700 active:scale-95 transition-all">Clear Monthly Records</button>
+                        <button onClick={handleDeleteMonth} disabled={isSyncing} className="flex-2 px-8 py-3.5 bg-rose-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-100 hover:bg-rose-700 active:scale-95 transition-all">Clear Monthly Records</button>
                     </div>
                </div>
           </div>

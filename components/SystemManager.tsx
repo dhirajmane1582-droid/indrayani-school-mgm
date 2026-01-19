@@ -111,7 +111,15 @@ CREATE TABLE IF NOT EXISTS results (
   published BOOLEAN DEFAULT false
 );
 
--- 7. DISABLE RLS (Security handled by App Logic)
+-- 7. REPAIR/CREATE ATTENDANCE TABLE
+CREATE TABLE IF NOT EXISTS attendance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date TEXT NOT NULL,
+  "studentId" UUID REFERENCES students(id) ON DELETE CASCADE,
+  present BOOLEAN DEFAULT true
+);
+
+-- 8. DISABLE RLS (Security handled by App Logic)
 ALTER TABLE students DISABLE ROW LEVEL SECURITY;
 ALTER TABLE annual_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE results DISABLE ROW LEVEL SECURITY;
@@ -121,7 +129,7 @@ ALTER TABLE announcements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE fees DISABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
 
--- 8. CLEAR CACHE
+-- 9. CLEAR CACHE
 NOTIFY pgrst, 'reload schema';
 `;
 
@@ -161,7 +169,7 @@ NOTIFY pgrst, 'reload schema';
                 </div>
                 <div>
                     <h3 className="text-lg font-black uppercase tracking-tight text-white">Full Cloud Database Repair</h3>
-                    <p className="text-xs text-indigo-200 font-medium">Fixes PEN No, Religion & Sync Errors</p>
+                    <p className="text-xs text-indigo-200 font-medium">Fixes Attendance, PEN No & Sync Errors</p>
                 </div>
             </div>
             <button 
@@ -180,8 +188,7 @@ NOTIFY pgrst, 'reload schema';
                         Cloud Sync Error Fix
                     </p>
                     <p className="text-xs text-indigo-100 leading-relaxed">
-                        If you are getting "Cloud Error" when saving, your cloud database is likely missing new columns like <strong>PEN No.</strong> or <strong>Caste</strong>. 
-                        <strong> Copy this script and run it in the Supabase SQL Editor.</strong>
+                        If you are getting "Cloud Error" or students cannot see their attendance, run this script to ensure all cloud tables (including <strong>Attendance</strong>) are correctly initialized.
                     </p>
                 </div>
                 <div className="relative">
